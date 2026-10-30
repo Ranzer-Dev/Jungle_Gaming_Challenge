@@ -6,11 +6,13 @@ import {
 } from "../dtos/wagering.dto";
 import { Money } from "../../domain/value-objects/money.value-object";
 import {
+  FailureCode,
   WagerTransaction,
   WagerTransactionKind,
   WagerTransactionStatus,
 } from "../../domain/entities/wager-transaction.entity";
 import { computeCanonicalPayloadHash } from "../../domain/services/canonical-hash.service";
+import { DomainError } from "../../domain/errors/domain.error";
 import {
   IdempotencyPayloadMismatchError,
   InvalidReferenceKindError,
@@ -39,7 +41,6 @@ export class ProcessWagerTransactionUseCase {
   public async execute(
     command: ProcessWagerTransactionCommand,
   ): Promise<ProcessWagerTransactionResult> {
-    const money = Money.from(command.money);
     const payloadHash = computeCanonicalPayloadHash({
       providerId: command.providerId,
       externalTransactionId: command.externalTransactionId,
@@ -51,6 +52,64 @@ export class ProcessWagerTransactionUseCase {
       money: command.money,
       referenceExternalTransactionId: command.referenceExternalTransactionId,
     });
+
+    try {
+      return await this.executeInternal(command, payloadHash);
+    } catch (err: unknown) {
+      if (this.isUniqueConstraintViolation(err)) {
+        // Concorrência estrita no PostgreSQL (23505): outra transação paralela acabou de comitar a transação pioneira.
+        // Faz até 10 tentativas curtas para carregar a transação vencedora confirmada pelo PostgreSQL.
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const existingTx = await this.uow.execute(async ({ transactions }) => {
+            return transactions.findByIdempotencyKey(command.idempotencyKey);
+          });
+
+          if (existingTx) {
+            if (!existingTx.matchesPayload(payloadHash)) {
+              throw new IdempotencyPayloadMismatchError(command.idempotencyKey);
+            }
+
+            const historicalBalance =
+              existingTx.balanceAtProcessed ??
+              (await this.uow.execute(async ({ wallets }) => wallets.findById(command.walletId)))?.balance ??
+              Money.from(command.money);
+
+            return {
+              transactionId: existingTx.id,
+              status: existingTx.status,
+              balance: historicalBalance.toJSON(),
+              idempotentReplay: true,
+              failureCode: existingTx.failureCode,
+            };
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 30));
+        }
+      }
+
+      throw err;
+    }
+  }
+
+  private isUniqueConstraintViolation(err: unknown): boolean {
+    if (!err || typeof err !== "object") return false;
+    const errorAny = err as any;
+    return (
+      errorAny.name === "UniqueConstraintViolationException" ||
+      errorAny.code === "23505" ||
+      errorAny.errno === 23505 ||
+      (typeof errorAny.message === "string" &&
+        (errorAny.message.includes("23505") ||
+          errorAny.message.includes("duplicate key") ||
+          errorAny.message.includes("unique constraint")))
+    );
+  }
+
+  private async executeInternal(
+    command: ProcessWagerTransactionCommand,
+    payloadHash: string,
+  ): Promise<ProcessWagerTransactionResult> {
+    const money = Money.from(command.money);
 
     return this.uow.execute(async (ctx) => {
       // 1. Transactional Inbox (Se a requisição veio via fila SQS)
@@ -70,6 +129,7 @@ export class ProcessWagerTransactionUseCase {
               status: existingTx.status,
               balance: existingTx.balanceAtProcessed.toJSON(),
               idempotentReplay: true,
+              failureCode: existingTx.failureCode,
             };
           }
         }
@@ -103,6 +163,7 @@ export class ProcessWagerTransactionUseCase {
           status: existingTx.status,
           balance: historicalBalance.toJSON(),
           idempotentReplay: true,
+          failureCode: existingTx.failureCode,
         };
       }
 
@@ -412,47 +473,25 @@ export class ProcessWagerTransactionUseCase {
             throw new Error(`Unsupported transaction kind: ${command.kind}`);
         }
       } catch (err: unknown) {
-        // Se for erro de negócio (saldo insuficiente, estorno causaria negativo), persiste a rejeição auditável (README Seção 7)
-        if (err instanceof InsufficientFundsError) {
-          transaction.reject("INSUFFICIENT_FUNDS", wallet.balance);
+        // Se for erro de negócio (DomainError com statusCode 422), persiste a rejeição auditável (README Seção 7)
+        if (err instanceof DomainError && err.statusCode === 422) {
+          transaction.reject(err.failureCode as FailureCode, wallet.balance);
           ctx.transactions.persist(transaction);
 
           this.enqueueRejectedEvent(
             ctx,
             transaction,
-            "INSUFFICIENT_FUNDS",
+            err.failureCode,
             err.message,
           );
-          throw err;
-        }
 
-        if (err instanceof RollbackWouldCauseNegativeBalanceError) {
-          transaction.reject(
-            "ROLLBACK_WOULD_CAUSE_NEGATIVE_BALANCE",
-            wallet.balance,
-          );
-          ctx.transactions.persist(transaction);
-
-          this.enqueueRejectedEvent(
-            ctx,
-            transaction,
-            "ROLLBACK_WOULD_CAUSE_NEGATIVE_BALANCE",
-            err.message,
-          );
-          throw err;
-        }
-
-        if (err instanceof ReferenceAlreadyRevertedError) {
-          transaction.reject("REFERENCE_ALREADY_REVERTED", wallet.balance);
-          ctx.transactions.persist(transaction);
-
-          this.enqueueRejectedEvent(
-            ctx,
-            transaction,
-            "REFERENCE_ALREADY_REVERTED",
-            err.message,
-          );
-          throw err;
+          return {
+            transactionId: transaction.id,
+            status: transaction.status,
+            balance: wallet.balance.toJSON(),
+            idempotentReplay: false,
+            failureCode: err.failureCode,
+          };
         }
 
         throw err;

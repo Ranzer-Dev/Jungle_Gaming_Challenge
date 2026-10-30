@@ -31,11 +31,8 @@ export class MikroOrmWalletLedgerRepository implements IWalletLedgerRepository {
         const cursorDate = new Date(parsed.createdAt);
 
         qb.andWhere(
-          "(entry.created_at < :cursorDate OR (entry.created_at = :cursorDate AND entry.id < :cursorId))",
-          {
-            cursorDate,
-            cursorId: parsed.id,
-          },
+          "(entry.created_at < ? OR (entry.created_at = ? AND entry.id < ?))",
+          [cursorDate, cursorDate, parsed.id],
         );
       } catch {
         // Ignora cursor inválido

@@ -3,6 +3,8 @@ import {
   LedgerDirection,
   WalletLedgerEntry,
 } from "../../../domain/entities/wallet-ledger-entry.entity";
+import { Wallet } from "../../../domain/entities/wallet.aggregate";
+import { WagerTransaction } from "../../../domain/entities/wager-transaction.entity";
 import { MoneyType } from "../types/money.type";
 
 export const WalletLedgerEntrySchema = new EntitySchema<WalletLedgerEntry>({
@@ -10,8 +12,18 @@ export const WalletLedgerEntrySchema = new EntitySchema<WalletLedgerEntry>({
   tableName: "wallet_ledger_entries",
   properties: {
     id: { type: "uuid", primary: true },
-    walletId: { type: "uuid", fieldName: "wallet_id" },
-    transactionId: { type: "uuid", fieldName: "transaction_id" },
+    walletId: {
+      kind: "m:1",
+      entity: () => Wallet,
+      fieldName: "wallet_id",
+      mapToPk: true,
+    },
+    transactionId: {
+      kind: "m:1",
+      entity: () => WagerTransaction,
+      fieldName: "transaction_id",
+      mapToPk: true,
+    },
     direction: { enum: true, items: () => LedgerDirection },
     money: { type: MoneyType, fieldName: "amount" },
     balanceBefore: { type: MoneyType, fieldName: "balance_before_amount" },
@@ -25,4 +37,3 @@ export const WalletLedgerEntrySchema = new EntitySchema<WalletLedgerEntry>({
     },
   ],
 });
-

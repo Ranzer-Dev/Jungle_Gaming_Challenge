@@ -14,13 +14,17 @@ export interface InboxMessageState {
 }
 
 export class InboxMessage {
+  public processedAt?: Date;
+
   private constructor(
     public readonly messageId: string,
     public readonly consumerName: string,
     public readonly payloadHash: string,
     public readonly receivedAt: Date,
-    private _processedAt?: Date,
-  ) {}
+    processedAt?: Date,
+  ) {
+    this.processedAt = processedAt;
+  }
 
   public static receive(props: ReceiveInboxProps): InboxMessage {
     if (!props.messageId || !props.consumerName) {
@@ -45,19 +49,11 @@ export class InboxMessage {
     );
   }
 
-  public get processedAt(): Date | undefined {
-    return this._processedAt;
-  }
-
   public isProcessed(): boolean {
-    return this._processedAt !== undefined;
+    return this.processedAt !== undefined && this.processedAt !== null;
   }
 
   public markProcessed(at: Date = new Date()): void {
-    if (this.isProcessed()) {
-      return;
-    }
-    this._processedAt = at;
+    this.processedAt = at;
   }
 }
-

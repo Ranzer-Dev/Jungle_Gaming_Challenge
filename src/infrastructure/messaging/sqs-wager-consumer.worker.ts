@@ -232,3 +232,4 @@ export class SqsWagerConsumerWorker {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
+

@@ -72,6 +72,12 @@ export interface WagerTransactionState {
 }
 
 export class WagerTransaction {
+  public status: WagerTransactionStatus;
+  public referenceTransactionId?: string;
+  public failureCode?: FailureCode;
+  public balanceAtProcessed?: Money;
+  public processedAt?: Date;
+
   private constructor(
     public readonly id: string,
     public readonly providerId: string,
@@ -86,12 +92,18 @@ export class WagerTransaction {
     public readonly money: Money,
     public readonly referenceExternalTransactionId: string | undefined,
     public readonly createdAt: Date,
-    private _status: WagerTransactionStatus,
-    private _referenceTransactionId?: string,
-    private _failureCode?: FailureCode,
-    private _balanceAtProcessed?: Money,
-    private _processedAt?: Date,
-  ) {}
+    status: WagerTransactionStatus,
+    referenceTransactionId?: string,
+    failureCode?: FailureCode,
+    balanceAtProcessed?: Money,
+    processedAt?: Date,
+  ) {
+    this.status = status;
+    this.referenceTransactionId = referenceTransactionId;
+    this.failureCode = failureCode;
+    this.balanceAtProcessed = balanceAtProcessed;
+    this.processedAt = processedAt;
+  }
 
   public static create(props: CreateWagerTransactionProps): WagerTransaction {
     if (!props.id || !props.providerId || !props.externalTransactionId || !props.walletId) {
@@ -145,64 +157,55 @@ export class WagerTransaction {
     );
   }
 
-  public get status(): WagerTransactionStatus {
-    return this._status;
-  }
-
-  public get referenceTransactionId(): string | undefined {
-    return this._referenceTransactionId;
-  }
-
-  public get failureCode(): FailureCode | undefined {
-    return this._failureCode;
-  }
-
-  public get balanceAtProcessed(): Money | undefined {
-    return this._balanceAtProcessed;
-  }
-
-  public get processedAt(): Date | undefined {
-    return this._processedAt;
-  }
-
   public markProcessed(
     referenceTransactionId: string | undefined,
     balanceAtProcessed: Money,
     at: Date = new Date(),
   ): void {
     this.assertNotTerminal("markProcessed");
-    this._status = WagerTransactionStatus.Processed;
-    this._referenceTransactionId = referenceTransactionId;
-    this._balanceAtProcessed = balanceAtProcessed;
-    this._processedAt = at;
+    this.status = WagerTransactionStatus.Processed;
+    this.referenceTransactionId = referenceTransactionId;
+    this.balanceAtProcessed = balanceAtProcessed;
+    this.processedAt = at;
   }
 
   public markPendingReference(): void {
     this.assertNotTerminal("markPendingReference");
-    this._status = WagerTransactionStatus.PendingReference;
+    this.status = WagerTransactionStatus.PendingReference;
   }
 
   public reject(code: FailureCode, balanceAtProcessed?: Money, at: Date = new Date()): void {
     this.assertNotTerminal("reject");
-    this._status = WagerTransactionStatus.Rejected;
-    this._failureCode = code;
-    this._balanceAtProcessed = balanceAtProcessed;
-    this._processedAt = at;
+    this.status = WagerTransactionStatus.Rejected;
+    this.failureCode = code;
+    this.balanceAtProcessed = balanceAtProcessed;
+    this.processedAt = at;
   }
 
   public fail(code: FailureCode, at: Date = new Date()): void {
     this.assertNotTerminal("fail");
-    this._status = WagerTransactionStatus.Failed;
-    this._failureCode = code;
-    this._processedAt = at;
+    this.status = WagerTransactionStatus.Failed;
+    this.failureCode = code;
+    this.processedAt = at;
   }
 
   public isTerminal(): boolean {
     return (
-      this._status === WagerTransactionStatus.Processed ||
-      this._status === WagerTransactionStatus.Rejected ||
-      this._status === WagerTransactionStatus.Failed
+      this.status === WagerTransactionStatus.Processed ||
+      this.status === WagerTransactionStatus.Rejected ||
+      this.status === WagerTransactionStatus.Failed
     );
+  }
+
+  public isReversible(): boolean {
+    return (
+      this.status === WagerTransactionStatus.Processed &&
+      (this.kind === WagerTransactionKind.Bet || this.kind === WagerTransactionKind.Win)
+    );
+  }
+
+  public linkReference(referenceId: string): void {
+    this.referenceTransactionId = referenceId;
   }
 
   public affectsBalance(): boolean {
@@ -210,38 +213,49 @@ export class WagerTransaction {
   }
 
   public requiresReference(): boolean {
-    return this.kind === WagerTransactionKind.Refund || this.kind === WagerTransactionKind.Rollback;
+    return (
+      this.kind === WagerTransactionKind.Refund ||
+      this.kind === WagerTransactionKind.Rollback
+    );
+  }
+
+  public determineRollbackDirection(parentTransaction: WagerTransaction): LedgerDirection {
+    if (parentTransaction.kind === WagerTransactionKind.Bet) {
+      return LedgerDirection.Credit;
+    }
+    if (parentTransaction.kind === WagerTransactionKind.Win) {
+      return LedgerDirection.Debit;
+    }
+    throw new Error(`Cannot determine rollback direction for parent kind: '${parentTransaction.kind}'`);
   }
 
   public matchesPayload(payloadHash: string): boolean {
     return this.payloadHash === payloadHash;
   }
 
-  public ledgerDirectionFor(reference?: WagerTransaction): LedgerDirection {
-    switch (this.kind) {
-      case WagerTransactionKind.Opening:
-      case WagerTransactionKind.Win:
-      case WagerTransactionKind.Refund:
-        return LedgerDirection.Credit;
-      case WagerTransactionKind.Bet:
-        return LedgerDirection.Debit;
-      case WagerTransactionKind.Rollback:
-        if (!reference) {
-          throw new Error("Rollback requires reference transaction to determine ledger direction");
-        }
-        // Inverte a direção da referência
-        return reference.ledgerDirectionFor() === LedgerDirection.Credit
-          ? LedgerDirection.Debit
-          : LedgerDirection.Credit;
-      case WagerTransactionKind.Loss:
-        throw new Error("Loss transaction does not produce ledger entries");
+  public ledgerDirectionFor(parentTransaction?: WagerTransaction): LedgerDirection {
+    if (this.kind === WagerTransactionKind.Bet) {
+      return LedgerDirection.Debit;
     }
+    if (
+      this.kind === WagerTransactionKind.Win ||
+      this.kind === WagerTransactionKind.Refund ||
+      this.kind === WagerTransactionKind.Opening
+    ) {
+      return LedgerDirection.Credit;
+    }
+    if (this.kind === WagerTransactionKind.Rollback) {
+      if (!parentTransaction) {
+        throw new Error("Parent transaction is required to determine Rollback ledger direction");
+      }
+      return this.determineRollbackDirection(parentTransaction);
+    }
+    throw new Error(`Transaction kind '${this.kind}' does not generate ledger entries`);
   }
 
   private assertNotTerminal(action: string): void {
     if (this.isTerminal()) {
-      throw new InvalidTransactionStateError(this._status, action);
+      throw new InvalidTransactionStateError(this.status, action);
     }
   }
 }
-

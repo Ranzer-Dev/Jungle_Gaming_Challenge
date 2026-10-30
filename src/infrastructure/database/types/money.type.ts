@@ -1,5 +1,5 @@
 import { Type } from "@mikro-orm/core";
-import { Money } from "../../domain/value-objects/money.value-object";
+import { Money } from "../../../domain/value-objects/money.value-object";
 
 export class MoneyType extends Type<Money | undefined, string | undefined> {
   override convertToDatabaseValue(value: Money | undefined): string | undefined {

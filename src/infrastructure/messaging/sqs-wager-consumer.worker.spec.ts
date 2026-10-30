@@ -71,7 +71,6 @@ describe("SqsWagerConsumerWorker", () => {
     const wallet = Wallet.open({
       id: "b1b7ef3c-6cc1-447a-8bc2-108b3e34b15c",
       playerId: "p-1",
-      currency: "BRL",
       initialBalance: Money.from({ amount: "100.00", currency: "BRL" }),
     });
     uow.walletsList.push(wallet);
@@ -183,3 +182,4 @@ describe("SqsWagerConsumerWorker", () => {
     expect(sentDelete).toBe(false); // Retida no broker para redelivery!
   });
 });
+

@@ -211,7 +211,6 @@ describe("Worker Components", () => {
       const wallet = Wallet.open({
         id: "w-1",
         playerId: "p-1",
-        currency: "BRL",
         initialBalance: Money.from({ amount: "50.00", currency: "BRL" }),
       });
       uow.walletsList.push(wallet);
@@ -267,7 +266,6 @@ describe("Worker Components", () => {
       const wallet = Wallet.open({
         id: "w-2",
         playerId: "p-2",
-        currency: "BRL",
         initialBalance: Money.from({ amount: "100.00", currency: "BRL" }),
       });
       uow.walletsList.push(wallet);

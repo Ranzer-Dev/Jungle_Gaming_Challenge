@@ -1,6 +1,9 @@
-import { Money } from "../value-objects/money.value-object";
-import { LedgerDirection, WalletLedgerEntry } from "./wallet-ledger-entry.entity";
 import { InsufficientFundsError } from "../errors/wallet.errors";
+import { Money } from "../value-objects/money.value-object";
+import {
+  LedgerDirection,
+  WalletLedgerEntry,
+} from "./wallet-ledger-entry.entity";
 
 export interface OpenWalletProps {
   id: string;
@@ -9,7 +12,7 @@ export interface OpenWalletProps {
   createdAt?: Date;
 }
 
-export interface WalletState {
+export interface RehydrateWalletProps {
   id: string;
   playerId: string;
   currency: string;
@@ -20,15 +23,23 @@ export interface WalletState {
 }
 
 export class Wallet {
+  public balance: Money;
+  public version: number;
+  public updatedAt: Date;
+
   private constructor(
     public readonly id: string,
     public readonly playerId: string,
     public readonly currency: string,
-    private _balance: Money,
-    private _version: number,
+    balance: Money,
+    version: number,
     public readonly createdAt: Date,
-    private _updatedAt: Date,
-  ) {}
+    updatedAt: Date,
+  ) {
+    this.balance = balance;
+    this.version = version;
+    this.updatedAt = updatedAt;
+  }
 
   public static open(props: OpenWalletProps): Wallet {
     if (!props.id || !props.playerId) {
@@ -52,7 +63,7 @@ export class Wallet {
     );
   }
 
-  public static rehydrate(state: WalletState): Wallet {
+  public static rehydrate(state: RehydrateWalletProps): Wallet {
     return new Wallet(
       state.id,
       state.playerId,
@@ -62,18 +73,6 @@ export class Wallet {
       state.createdAt,
       state.updatedAt,
     );
-  }
-
-  public get balance(): Money {
-    return this._balance;
-  }
-
-  public get version(): number {
-    return this._version;
-  }
-
-  public get updatedAt(): Date {
-    return this._updatedAt;
   }
 
   public debit(
@@ -88,12 +87,12 @@ export class Wallet {
       throw new Error("Debit amount must be strictly positive");
     }
 
-    if (this._balance.isLessThan(amount)) {
-      throw new InsufficientFundsError(this.id, this._balance.toString(), amount.toString());
+    if (this.balance.isLessThan(amount)) {
+      throw new InsufficientFundsError(this.id, this.balance.toString(), amount.toString());
     }
 
-    const balanceBefore = this._balance;
-    const balanceAfter = this._balance.subtract(amount);
+    const balanceBefore = this.balance;
+    const balanceAfter = this.balance.subtract(amount);
 
     const ledgerEntry = WalletLedgerEntry.create({
       id: ledgerEntryId,
@@ -106,11 +105,11 @@ export class Wallet {
       createdAt: at,
     });
 
-    this._balance = balanceAfter;
-    this._version += 1; // Incrementa somente quando o saldo muda (README L209)
-    this._updatedAt = at;
+    this.balance = balanceAfter;
+    this.version += 1; // Incrementa somente quando o saldo muda (README L209)
+    this.updatedAt = at;
 
-    return { newBalance: this._balance, ledgerEntry };
+    return { newBalance: this.balance, ledgerEntry };
   }
 
   public credit(
@@ -125,8 +124,8 @@ export class Wallet {
       throw new Error("Credit amount must be strictly positive");
     }
 
-    const balanceBefore = this._balance;
-    const balanceAfter = this._balance.add(amount);
+    const balanceBefore = this.balance;
+    const balanceAfter = this.balance.add(amount);
 
     const ledgerEntry = WalletLedgerEntry.create({
       id: ledgerEntryId,
@@ -139,17 +138,23 @@ export class Wallet {
       createdAt: at,
     });
 
-    this._balance = balanceAfter;
-    this._version += 1; // Incrementa somente quando o saldo muda
-    this._updatedAt = at;
+    this.balance = balanceAfter;
+    this.version += 1; // Incrementa somente quando o saldo muda (README L209)
+    this.updatedAt = at;
 
-    return { newBalance: this._balance, ledgerEntry };
+    return { newBalance: this.balance, ledgerEntry };
+  }
+
+  public canDebit(amount: Money): boolean {
+    this.assertSameCurrency(amount);
+    return !this.balance.isLessThan(amount);
   }
 
   private assertSameCurrency(money: Money): void {
     if (this.currency !== money.currency) {
-      throw new Error(`Currency mismatch: wallet has '${this.currency}' but operation requested '${money.currency}'`);
+      throw new Error(
+        `Wallet currency '${this.currency}' does not match operation currency '${money.currency}'`,
+      );
     }
   }
 }
-

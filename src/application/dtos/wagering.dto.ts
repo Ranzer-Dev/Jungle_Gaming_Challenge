@@ -36,6 +36,7 @@ export interface ProcessWagerTransactionResult {
   status: WagerTransactionStatus;
   balance: MoneyProps;
   idempotentReplay: boolean;
+  failureCode?: string;
 }
 
 export interface WalletReconciliationResult {

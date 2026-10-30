@@ -87,10 +87,8 @@ export class WageringController {
       roundId: dto.roundId,
       gameId: dto.gameId,
       kind: dto.kind,
-      amount: dto.amount,
-      currency: dto.currency,
+      money: { amount: dto.amount, currency: dto.currency },
       referenceExternalTransactionId: dto.referenceExternalTransactionId,
-      referenceTransactionId: dto.referenceTransactionId,
     });
 
     let status = HttpStatus.CREATED;

@@ -17,7 +17,10 @@ import {
   WagerTransactionKind,
   WagerTransactionStatus,
 } from "../../domain/entities/wager-transaction.entity";
-import { WalletLedgerEntry } from "../../domain/entities/wallet-ledger-entry.entity";
+import {
+  LedgerDirection,
+  WalletLedgerEntry,
+} from "../../domain/entities/wallet-ledger-entry.entity";
 import { OutboxMessage } from "../../domain/entities/outbox-message.entity";
 import { InboxMessage } from "../../domain/entities/inbox-message.entity";
 import { Money } from "../../domain/value-objects/money.value-object";
@@ -131,7 +134,7 @@ describe("Application Use Cases", () => {
 
     // Valida que o ledger tem 1 lançamento de CREDIT de 100.00
     expect(uow.ledgerEntries).toHaveLength(1);
-    expect(uow.ledgerEntries[0].direction).toBe("CREDIT");
+    expect(uow.ledgerEntries[0].direction).toBe(LedgerDirection.Credit);
     expect(uow.ledgerEntries[0].money.toString()).toBe("100.00");
 
     // Valida evento na outbox
@@ -167,7 +170,7 @@ describe("Application Use Cases", () => {
 
     // Ledger: 1 OPENING + 1 BET DEBIT = 2
     expect(uow.ledgerEntries).toHaveLength(2);
-    expect(uow.ledgerEntries[1].direction).toBe("DEBIT");
+    expect(uow.ledgerEntries[1].direction).toBe(LedgerDirection.Debit);
   });
 
   it("should return idempotent replay for identical request", async () => {

@@ -33,4 +33,5 @@ Thumbs.db
 # Temporary data / Docker local volumes
 postgres_data/
 localstack_data/
+.snapshot-*.json
 

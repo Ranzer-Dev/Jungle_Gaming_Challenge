@@ -4,6 +4,7 @@ import {
   WagerTransactionKind,
   WagerTransactionStatus,
 } from "../../../domain/entities/wager-transaction.entity";
+import { Wallet } from "../../../domain/entities/wallet.aggregate";
 import { MoneyType } from "../types/money.type";
 
 export const WagerTransactionSchema = new EntitySchema<WagerTransaction>({
@@ -15,7 +16,12 @@ export const WagerTransactionSchema = new EntitySchema<WagerTransaction>({
     externalTransactionId: { type: "string", fieldName: "external_transaction_id" },
     idempotencyKey: { type: "string", fieldName: "idempotency_key" },
     payloadHash: { type: "string", fieldName: "payload_hash" },
-    walletId: { type: "uuid", fieldName: "wallet_id" },
+    walletId: {
+      kind: "m:1",
+      entity: () => Wallet,
+      fieldName: "wallet_id",
+      mapToPk: true,
+    },
     playerId: { type: "string", fieldName: "player_id" },
     roundId: { type: "string", fieldName: "round_id" },
     gameId: { type: "string", fieldName: "game_id" },
@@ -58,4 +64,3 @@ export const WagerTransactionSchema = new EntitySchema<WagerTransaction>({
     },
   ],
 });
-

@@ -122,16 +122,17 @@ export class WalletsController {
     nextCursor: string | null;
     hasMore: boolean;
   }> {
-    return this.unitOfWork.execute(async ({ wallets, ledgers }) => {
+    return this.unitOfWork.execute(async ({ wallets, ledger }) => {
       const wallet = await wallets.findById(id);
       if (!wallet) {
         throw new WalletNotFoundError(id);
       }
 
-      const { entries, nextCursor } = await ledgers.findByWalletId(id, {
-        limit: query.limit,
-        cursor: query.cursor,
-      });
+      const { entries, nextCursor, hasMore } = await ledger.findByWalletId(
+        id,
+        query.limit ?? 20,
+        query.cursor,
+      );
 
       return {
         items: entries.map((e) => ({
@@ -144,8 +145,8 @@ export class WalletsController {
           balanceAfter: e.balanceAfter.toProps(),
           createdAt: e.createdAt,
         })),
-        nextCursor,
-        hasMore: nextCursor !== null,
+        nextCursor: nextCursor ?? null,
+        hasMore,
       };
     });
   }
@@ -166,6 +167,13 @@ export class WalletsController {
     consistent: boolean;
     checkedEntries: number;
   }> {
-    return this.reconcileWalletUseCase.execute({ walletId: id });
+    const res = await this.reconcileWalletUseCase.execute(id);
+    return {
+      walletId: res.walletId,
+      balance: res.storedBalance,
+      ledgerSum: res.calculatedBalance,
+      consistent: res.consistent,
+      checkedEntries: res.checkedEntries,
+    };
   }
 }
