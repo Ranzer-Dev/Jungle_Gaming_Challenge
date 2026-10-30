@@ -1,0 +1,561 @@
+openapi: 3.1.0
+info:
+  title: Distributed Wagering Processor API
+  version: 1.0.0
+  description: >
+    API do processador financeiro distribuído de apostas para a Jungle Gaming.
+    Implementa garantias estritas de concorrência por carteira, idempotência persistente,
+    ledger append-only imutável e transações com precisão monetária exata.
+servers:
+  - url: http://localhost:3000
+    description: Servidor Local de Desenvolvimento
+
+paths:
+  /wallets:
+    post:
+      summary: Criação de Carteira
+      description: >
+        Cria uma carteira para um jogador em uma moeda específica (ex: BRL).
+        Se initialBalance for maior que zero, gera atomicamente a transação interna OPENING
+        e o lançamento correspondente de CREDIT no ledger.
+      operationId: createWallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWalletRequest'
+      responses:
+        '201':
+          description: Carteira criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '400':
+          description: Dados de entrada ou formato monetário inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Carteira já existente para este playerId e currency
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /wallets/{walletId}:
+    get:
+      summary: Consulta Saldo e Dados da Carteira
+      operationId: getWalletById
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da carteira
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '404':
+          description: Carteira não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /wallets/{walletId}/ledger:
+    get:
+      summary: Extrato da Carteira (Ledger) com Paginação por Cursor
+      description: >
+        Retorna o histórico imutável de lançamentos financeiros da carteira.
+        Utiliza cursor opaco codificado em base64 (created_at + id) para paginação estável.
+      operationId: getWalletLedger
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Cursor opaco retornado na página anterior
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Lista de lançamentos do ledger
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerPageResponse'
+        '404':
+          description: Carteira não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /wagering/transactions:
+    post:
+      summary: Submeter Transação de Aposta ou Desdobramento
+      description: >
+        Processa transações de jogo (BET, WIN, LOSS, REFUND, ROLLBACK).
+        Requer obrigatoriamente o header Idempotency-Key.
+        Replays idênticos retornam HTTP 200 com idempotentReplay=true.
+        Payloads conflitantes na mesma chave retornam HTTP 409 Conflict.
+      operationId: processWagerTransaction
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Identificador único de idempotência (ex: provider-a:transaction-123)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessTransactionRequest'
+      responses:
+        '201':
+          description: Transação processada pela primeira vez com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessTransactionResponse'
+        '200':
+          description: Replay idempotente de transação processada anteriormente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessTransactionResponse'
+        '400':
+          description: Montante monetário inválido ou formato incompatível
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Carteira não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflito de Idempotência (mesma chave com payload semântico diferente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Rejeição por regra de negócio (saldo insuficiente, referência ausente/já estornada)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /wagering/transactions/{transactionId}:
+    get:
+      summary: Consulta Transação por ID Interno
+      operationId: getTransactionById
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dados da transação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetailResponse'
+        '404':
+          description: Transação não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /providers/{providerId}/wagering/transactions/{externalTransactionId}:
+    get:
+      summary: Consulta Transação por Referência Externa do Provedor
+      operationId: getTransactionByExternalId
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: externalTransactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dados da transação encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetailResponse'
+        '404':
+          description: Transação não encontrada para o provedor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /wallets/{walletId}/reconciliation:
+    post:
+      summary: Auditoria Contábil e Reconciliação de Saldo
+      description: >
+        Soma todos os lançamentos do ledger da carteira e compara com o saldo materializado atual.
+        Divergências são registradas e retornadas sem autocorreção silenciosa.
+      operationId: reconcileWallet
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Relatório de reconciliação contábil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationResponse'
+        '404':
+          description: Carteira não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health/live:
+    get:
+      summary: Liveness Probe
+      description: Retorna 200 se a aplicação estiver em execução e responsiva. Sem autenticação.
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Aplicação viva
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  uptime:
+                    type: number
+                    example: 3600
+
+  /health/ready:
+    get:
+      summary: Readiness Probe
+      description: Verifica conectividade física com PostgreSQL e SQS. Sem autenticação.
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Dependências operacionais
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  checks:
+                    type: object
+        '503':
+          description: Dependência inalcançável (ex: banco de dados indisponível)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: DOWN
+
+components:
+  schemas:
+    MoneyProps:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: string
+          pattern: '^[0-9]+\.[0-9]{2}$'
+          example: "25.00"
+          description: Valor decimal estrito com exatamente 2 casas decimais. Nunca negativo em requisições.
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: "BRL"
+          description: Código de moeda ISO-4217
+
+    CreateWalletRequest:
+      type: object
+      required:
+        - playerId
+        - initialBalance
+      properties:
+        playerId:
+          type: string
+          example: "0192f28f-5dc0-7d58-bdb2-814ad6a0f4a1"
+        initialBalance:
+          $ref: '#/components/schemas/MoneyProps'
+
+    WalletResponse:
+      type: object
+      required:
+        - id
+        - playerId
+        - balance
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+        balance:
+          $ref: '#/components/schemas/MoneyProps'
+        version:
+          type: integer
+          example: 1
+
+    ProcessTransactionRequest:
+      type: object
+      required:
+        - providerId
+        - externalTransactionId
+        - playerId
+        - walletId
+        - roundId
+        - gameId
+        - kind
+        - money
+      properties:
+        providerId:
+          type: string
+          example: "provider-a"
+        externalTransactionId:
+          type: string
+          example: "transaction-123"
+        playerId:
+          type: string
+          example: "0192f28f-5dc0-7d58-bdb2-814ad6a0f4a1"
+        walletId:
+          type: string
+          format: uuid
+          example: "0192f291-27dd-7d3f-8071-5f8685deef37"
+        roundId:
+          type: string
+          example: "round-987"
+        gameId:
+          type: string
+          example: "fortune-chimp"
+        kind:
+          type: string
+          enum: [BET, WIN, LOSS, REFUND, ROLLBACK]
+          example: "BET"
+        money:
+          $ref: '#/components/schemas/MoneyProps'
+        referenceExternalTransactionId:
+          type: string
+          nullable: true
+          example: "transaction-122"
+          description: Obrigatório para REFUND e ROLLBACK
+
+    ProcessTransactionResponse:
+      type: object
+      required:
+        - transactionId
+        - status
+        - balance
+        - idempotentReplay
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PROCESSED, PENDING_REFERENCE, REJECTED, FAILED]
+          example: "PROCESSED"
+        balance:
+          $ref: '#/components/schemas/MoneyProps'
+        idempotentReplay:
+          type: boolean
+          example: false
+
+    TransactionDetailResponse:
+      type: object
+      required:
+        - id
+        - providerId
+        - externalTransactionId
+        - playerId
+        - walletId
+        - roundId
+        - gameId
+        - kind
+        - money
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+        externalTransactionId:
+          type: string
+        playerId:
+          type: string
+        walletId:
+          type: string
+          format: uuid
+        roundId:
+          type: string
+        gameId:
+          type: string
+        kind:
+          type: string
+        money:
+          $ref: '#/components/schemas/MoneyProps'
+        status:
+          type: string
+        failureCode:
+          type: string
+          nullable: true
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    LedgerEntryItem:
+      type: object
+      required:
+        - id
+        - transactionId
+        - direction
+        - money
+        - balanceBefore
+        - balanceAfter
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        transactionId:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [DEBIT, CREDIT]
+        money:
+          $ref: '#/components/schemas/MoneyProps'
+        balanceBefore:
+          $ref: '#/components/schemas/MoneyProps'
+        balanceAfter:
+          $ref: '#/components/schemas/MoneyProps'
+        createdAt:
+          type: string
+          format: date-time
+
+    LedgerPageResponse:
+      type: object
+      required:
+        - entries
+        - hasMore
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerEntryItem'
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    ReconciliationResponse:
+      type: object
+      required:
+        - walletId
+        - storedBalance
+        - calculatedBalance
+        - difference
+        - consistent
+        - checkedEntries
+      properties:
+        walletId:
+          type: string
+          format: uuid
+        storedBalance:
+          $ref: '#/components/schemas/MoneyProps'
+        calculatedBalance:
+          $ref: '#/components/schemas/MoneyProps'
+        difference:
+          $ref: '#/components/schemas/MoneyProps'
+        consistent:
+          type: boolean
+          example: true
+        checkedEntries:
+          type: integer
+          example: 42
+
+    ErrorResponse:
+      type: object
+      required:
+        - statusCode
+        - failureCode
+        - message
+        - timestamp
+      properties:
+        statusCode:
+          type: integer
+          example: 422
+        failureCode:
+          type: string
+          example: "INSUFFICIENT_FUNDS"
+        message:
+          type: string
+          example: "Wallet balance is lower than requested bet amount"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-10-30T07:50:00.000Z"
+
