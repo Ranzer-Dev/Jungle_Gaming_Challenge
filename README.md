@@ -1,3 +1,72 @@
+# 🦧 Jungle Gaming — Distributed Wagering Processor
+
+<p align="center">
+  <b>Plataforma distribuída de alta performance para processamento financeiro de apostas em tempo real com consistência estrita, ledger imutável (append-only), Transactional Outbox/Inbox e resiliência a concorrência extrema.</b>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Runtime-Bun_1.4-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun Badge"/>
+  <img src="https://img.shields.io/badge/Framework-NestJS_10-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS Badge"/>
+  <img src="https://img.shields.io/badge/Language-TypeScript_Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript Badge"/>
+  <img src="https://img.shields.io/badge/Database-PostgreSQL_16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL Badge"/>
+  <img src="https://img.shields.io/badge/ORM-MikroORM_6-2B3A42?style=for-the-badge" alt="MikroORM Badge"/>
+  <img src="https://img.shields.io/badge/Messaging-AWS_SQS_FIFO-FF9900?style=for-the-badge&logo=amazonsqs&logoColor=white" alt="AWS SQS Badge"/>
+  <img src="https://img.shields.io/badge/Architecture-DDD_Puro_%2B_Hexagonal-blue?style=for-the-badge" alt="Architecture Badge"/>
+  <img src="https://img.shields.io/badge/Tests-44_Passed_%7C_Zero_Mocks-success?style=for-the-badge" alt="Tests Badge"/>
+</p>
+
+---
+
+## 🎯 Destaques Arquiteturais & Engenharia de Excelência
+
+- **Correção Financeira Absoluta:** Zero primitivos de ponto flutuante (`number`/`float`); uso exclusivo do Value Object `Money` baseado em `decimal.js` com escala fixa (2 casas decimais) e mapeamento `NUMERIC(18, 2)` via `MoneyType`.
+- **Domínio DDD Puro:** Entidades e agregados sem decorators de ORM (`EntitySchema` desacoplado no MikroORM com `mapToPk: true`). Construtores fechados e factories estáticas (`.create()`, `.open()`, `.rehydrate()`).
+- **Resiliência a Hot Wallets:** Lock pessimista granular por `wallet_id` (`SELECT ... FOR UPDATE`), serializando operações de escrita sem contenção global e sem starvation.
+- **Idempotência Canônica Persistente:** Algoritmo determinístico baseado em RFC 8785 (JSON canônico + SHA-256). Absorção transparente de race conditions de rede pelo tratamento de violação de constraint única (`23505`) no PostgreSQL.
+- **Ledger 100% Imutável:** Lançamentos do extrato contábil são append-only, protegidos por trigger nativo do PostgreSQL (`trg_ledger_immutable`) que bloqueia `UPDATE` e `DELETE`.
+- **Garantias At-Least-Once & Exactly-Once:**
+  - **Transactional Outbox:** Gravação atômica na transação de negócio e publicação assíncrona concorrente via `SELECT ... FOR UPDATE SKIP LOCKED`.
+  - **Transactional Inbox & Commit Before ACK:** Deduplicação no consumidor SQS FIFO e exclusão da mensagem estritamente após o commit no banco de dados.
+  - **Dependências Fora de Ordem (`PENDING_REFERENCE`):** Estornos (`REFUND`/`ROLLBACK`) que chegam antes da aposta de origem (`BET`) são aceitos como HTTP 202 e resolvidos automaticamente pelo worker em segundo plano.
+- **Auditoria & Reconciliação Contábil:** Endpoint `POST /wallets/:id/reconciliation` que audita matematicamente o saldo materializado contra o somatório de créditos e débitos do ledger.
+- **Documentação de Nível Staff/Principal:** Documento mestre de arquitetura detalhado disponível em [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
+---
+
+## 🚀 Como Executar o Projeto
+
+### 1. Pré-requisitos
+- [Bun](https://bun.sh/) (v1.2+) ou Node.js (v20+)
+- [Docker](https://www.docker.com/) e Docker Compose
+
+### 2. Inicialização dos Contêineres (PostgreSQL + LocalStack SQS FIFO)
+```bash
+docker compose up -d
+```
+
+### 3. Instalação de Dependências & Migrations
+```bash
+bun install
+bun run mikro-orm migration:up
+```
+
+### 4. Execução da Aplicação
+```bash
+bun run start:dev
+```
+Acesse a documentação interativa Swagger em: **`http://localhost:3000/docs`**
+
+### 5. Execução dos Testes Automatizados (Zero Mocks, Contêineres Reais)
+```bash
+# Executa todos os 44 testes (Unitários, Integração e Concorrência Massiva)
+bun test
+
+# Executa o benchmark de teste de carga (Throughput & Latência p50/p95/p99)
+bun run test:load
+```
+
+---
+
 # Technical Challenge — Distributed Wagering Processor
 
 ## Bem-vindo à Jungle Gaming 🦧
