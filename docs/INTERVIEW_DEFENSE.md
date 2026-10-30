@@ -1,4 +1,4 @@
-# Guia de Apresentação Técnica & Defesa de Arquitetura (Jungle Gaming)
+﻿# Guia de Apresentação Técnica & Defesa de Arquitetura (Jungle Gaming)
 
 Este documento foi preparado especificamente para você estudar antes da entrevista técnica com o time de engenharia da **Jungle Gaming**. Ele sintetiza as perguntas mais prováveis da banca avaliadora e a argumentação técnica de alto nível que você deve utilizar.
 
@@ -53,7 +53,7 @@ Este documento foi preparado especificamente para você estudar antes da entrevi
 > "Garantimos em três camadas de defesa:
 > 1. **No Domínio:** A classe imutável `WalletLedgerEntry` valida na factory estática que `balanceAfter = balanceBefore ± amount`. Não existem métodos setters; o lançamento é imutável.
 > 2. **No Schema do Banco:** Criamos uma `CHECK CONSTRAINT` no PostgreSQL que valida matematicamente a consistência entre saldo anterior, valor da operação e saldo posterior na tabela de ledger. Além disso, criamos a constraint `CHECK (balance_amount >= 0)` na tabela de carteiras para impedir matematicamente qualquer saldo negativo.
-> 3. **Na Reconciliação:** Disponibilizamos o endpoint `POST /wallets/:walletId/reconciliation`, que calcula em tempo real o somatório $\sum \text{Créditos} - \sum \text{Débitos}$ do ledger e compara com o campo `balance_amount` da carteira, reportando qualquer anomalia sem acobertar divergências."
+> 3. **Na Reconciliação:** Disponibilizamos o endpoint `POST /wallets/:walletId/reconciliation`, que calcula em tempo real o somatório `(Créditos - Débitos)` do ledger e compara com o campo `balance_amount` da carteira, reportando qualquer anomalia sem acobertar divergências."
 
 ---
 

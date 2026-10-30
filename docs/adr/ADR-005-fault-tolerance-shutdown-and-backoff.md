@@ -1,4 +1,4 @@
-# ADR-005: Resiliência em Falhas de Infraestrutura, Shutdown e Backoff
+﻿# ADR-005: Resiliência em Falhas de Infraestrutura, Shutdown e Backoff
 
 ## Status
 Aprovado
@@ -25,17 +25,19 @@ Adotamos uma estratégia formal de **Resiliência em Três Níveis**:
 ### 1. Política de Retry com Exponential Backoff & Jitter
 Para falhas transitórias de infraestrutura (timeout do banco, lock timeout transitório, indisponibilidade temporária de rede com o LocalStack SQS):
 - **Algoritmo de Espera:**
-  $$t_{\text{wait}} = \min(t_{\text{max}}, t_{\text{base}} \times 2^{\text{attempt}}) \pm \text{jitter}$$
+  ```text
+t_wait = min(t_max, t_base * 2^attempt) ± jitter
+```
 - O **Jitter aleatório** (variação de ±20%) é mandatório para evitar o fenômeno da *Thundering Herd* (onde dezenas de instâncias ou workers tentam reconectar exatamente no mesmo milissegundo, derrubando o banco recém-recuperado).
 - **Parâmetros:**
-  - $t_{\text{base}} = 100\text{ ms}$
-  - $t_{\text{max}} = 30\text{ s}$
+  - `t_base = 100 ms`
+  - `t_max = 30 s`
   - `maxAttempts = 5` para o worker de Outbox antes de registrar alerta crítico de lag.
 
 ### 2. Recuperação Pós-Crash no Consumidor SQS (At-Least-Once Delivery)
 - O consumidor opera sob **Commit Before ACK**:
-  - Cenário A: O processo morre **antes do commit** do PostgreSQL $\longrightarrow$ a transação sofre rollback automático no banco. O SQS aguarda o `VisibilityTimeout` expirar e entrega a mensagem para outra instância viva. Saldo não foi afetado.
-  - Cenário B: O processo morre **depois do commit e antes do ACK** $\longrightarrow$ o saldo foi alterado e o registro na tabela `inbox_messages` foi comitado atomicamente. Quando a mensagem volta pelo SQS, a nova instância consulta o Inbox, detecta `isProcessed() === true`, emite o `DeleteMessage` imediatamente e **não reprocessa a carteira**.
+  - Cenário A: O processo morre **antes do commit** do PostgreSQL -> a transação sofre rollback automático no banco. O SQS aguarda o `VisibilityTimeout` expirar e entrega a mensagem para outra instância viva. Saldo não foi afetado.
+  - Cenário B: O processo morre **depois do commit e antes do ACK** -> o saldo foi alterado e o registro na tabela `inbox_messages` foi comitado atomicamente. Quando a mensagem volta pelo SQS, a nova instância consulta o Inbox, detecta `isProcessed() === true`, emite o `DeleteMessage` imediatamente e **não reprocessa a carteira**.
 
 ### 3. Graceful Shutdown Coordenado (`SIGTERM` / `SIGINT`)
 Quando o container recebe sinal de parada do orquestrador:

@@ -1,4 +1,4 @@
-# ADR-003: Arquitetura de Segurança, Autenticação de Provedores e Proteção de Borda
+﻿# ADR-003: Arquitetura de Segurança, Autenticação de Provedores e Proteção de Borda
 
 ## Status
 Aprovado
@@ -58,7 +58,7 @@ Adotamos o padrão de **Portas e Adaptadores (Hexagonal Architecture)** para iso
 - Uma aposta não pode declarar `providerId: "pragmatic"` no payload se o token autenticado pertence a `"evolution"`.
 - O `ProviderAuthGuard` injeta o objeto `AuthenticatedProvider` no contexto da requisição (`ExecutionContext`).
 - O use case ou guard valida rigorosamente que:
-  $$\text{request.payload.providerId} == \text{context.authenticatedProvider.id}$$
+  `request.payload.providerId == context.authenticatedProvider.id`
   Qualquer divergência é rejeitada sumariamente com **HTTP 403 Forbidden** (`PROVIDER_IDENTITY_MISMATCH`).
 
 ### 3. Sanitização e Validação Estrita de Input

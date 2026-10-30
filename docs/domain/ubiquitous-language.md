@@ -1,4 +1,4 @@
-# Linguagem Ubíqua e Regras de Domínio (DDD)
+﻿# Linguagem Ubíqua e Regras de Domínio (DDD)
 
 Este documento formaliza o vocabulário oficial, as regras de negócio e os modelos conceituais do **Distributed Wagering Processor**, estabelecendo a base comum entre desenvolvedores, arquitetos e o domínio de **iGaming**.
 
@@ -65,9 +65,14 @@ stateDiagram-v2
 O ledger é construído sobre o princípio de contabilidade imutável:
 
 1. **Aritmética Exata:**
-   $$\text{balanceAfter} = \begin{cases} \text{balanceBefore} + \text{amount}, & \text{se } \text{direction} = \text{CREDIT} \\ \text{balanceBefore} - \text{amount}, & \text{se } \text{direction} = \text{DEBIT} \end{cases}$$
+   ```text
+   Se direction = CREDIT: balanceAfter = balanceBefore + amount
+   Se direction = DEBIT:  balanceAfter = balanceBefore - amount
+   ```
 2. **Consistência Global (Reconciliação):**
    A qualquer momento, o saldo materializado da carteira deve ser igual ao somatório do ledger:
-   $$\text{wallet.balance} = \sum \text{Créditos} - \sum \text{Débitos}$$
+   ```text
+   wallet.balance = soma(Creditos) - soma(Debitos)
+   ```
 3. **Auditoria Estrita:** Nenhuma linha do ledger pode ser modificada (`UPDATE`) ou excluída (`DELETE`).
 

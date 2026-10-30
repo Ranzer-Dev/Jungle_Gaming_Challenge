@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — Documento de Arquitetura & Decisões de Engenharia
+﻿# ARCHITECTURE.md — Documento de Arquitetura & Decisões de Engenharia
 
 <p align="center">
   <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
@@ -153,7 +153,9 @@ Quando 10 ou mais requisições idênticas chegam no exato mesmo milissegundo, a
 
 ### 5.1 A Invariante Financeira Fundamental
 O extrato da carteira (`wallet_ledger_entries`) é modelado como um livro-razão estritamente contábil:
-$$\text{balance\_after} = \text{balance\_before} \pm \text{amount}$$
+```text
+balance_after = balance_before ± amount
+```
 
 - **Zero UPDATE / Zero DELETE:** Uma vez gravado, um lançamento de ledger jamais pode ser alterado ou removido.
 - **Gatilho de Proteção Física no PostgreSQL:** A migration inicial instala o trigger `trg_ledger_immutable`:
@@ -176,14 +178,16 @@ O caso de uso `ReconcileWalletUseCase` (`src/application/use-cases/reconcile-wal
 1. Carrega o saldo materializado atual da tabela `wallets`.
 2. Executa a soma agregada de todos os lançamentos de `CREDIT` e deduz todos os lançamentos de `DEBIT` no ledger daquela carteira.
 3. Compara:
-   $$\Delta = \text{storedBalance} - (\Sigma \text{Credits} - \Sigma \text{Debits})$$
+   ```text
+   delta = storedBalance - (totalCredits - totalDebits)
+   ```
 4. Retorna `{ consistent: true, difference: "0.00", checkedEntries: N }`.
 
 ### 5.3 Keyset Pagination por Cursor Opaco Base64
-Para consultas de extrato de alto volume (`GET /wallets/:walletId/ledger?limit=50&cursor=...`), a paginação tradicional por `OFFSET / LIMIT` foi rejeitada por causar *table scans* degenerativos ($O(N)$).
+Para consultas de extrato de alto volume (`GET /wallets/:walletId/ledger?limit=50&cursor=...`), a paginação tradicional por `OFFSET / LIMIT` foi rejeitada por causar *table scans* degenerativos (`O(N)`).
 - **Implementação:** Keyset pagination baseada na tupla composta `(created_at, id)`.
 - **Cursor Opaco:** String Base64 contendo `{"id": "...", "createdAt": "..."}`.
-- **Complexidade:** $O(1)$ index lookup utilizando o índice composto `idx_ledger_wallet_cursor (wallet_id, created_at DESC, id DESC)`.
+- **Complexidade:** `O(1)` index lookup utilizando o índice composto `idx_ledger_wallet_cursor (wallet_id, created_at DESC, id DESC)`.
 
 ---
 
