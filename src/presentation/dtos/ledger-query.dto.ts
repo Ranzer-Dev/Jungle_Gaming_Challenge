@@ -24,3 +24,4 @@ export class LedgerQueryDto {
   @IsString()
   cursor?: string;
 }
+

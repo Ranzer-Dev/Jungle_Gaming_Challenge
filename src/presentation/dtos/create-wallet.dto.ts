@@ -32,3 +32,4 @@ export class CreateWalletDto {
   @IsString()
   id?: string;
 }
+

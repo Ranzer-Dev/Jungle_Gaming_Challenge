@@ -6,6 +6,7 @@ import { ReconcileWalletUseCase } from "./application/use-cases/reconcile-wallet
 import mikroOrmConfig from "./infrastructure/database/mikro-orm.config";
 import { MikroOrmUnitOfWork } from "./infrastructure/database/repositories/mikro-orm-unit-of-work";
 import { SqsQueuePublisher } from "./infrastructure/messaging/sqs-queue-publisher";
+import { SqsWagerConsumerWorker } from "./infrastructure/messaging/sqs-wager-consumer.worker";
 import { DefaultProviderIdentityService } from "./infrastructure/security/provider-identity.service";
 import { OutboxPublisherWorker } from "./infrastructure/workers/outbox-publisher.worker";
 import { PendingReferenceWorker } from "./infrastructure/workers/pending-reference.worker";
@@ -90,12 +91,20 @@ import { PROVIDER_IDENTITY_PORT, ProviderAuthGuard } from "./presentation/guards
       },
       inject: [UNIT_OF_WORK_PORT],
     },
+    {
+      provide: SqsWagerConsumerWorker,
+      useFactory: (processTxUseCase: ProcessWagerTransactionUseCase) => {
+        return new SqsWagerConsumerWorker(processTxUseCase);
+      },
+      inject: [ProcessWagerTransactionUseCase],
+    },
   ],
 })
 export class AppModule implements OnApplicationBootstrap, OnApplicationShutdown {
   constructor(
     private readonly outboxWorker: OutboxPublisherWorker,
     private readonly pendingWorker: PendingReferenceWorker,
+    private readonly sqsConsumerWorker: SqsWagerConsumerWorker,
   ) {}
 
   public onApplicationBootstrap(): void {
@@ -103,6 +112,7 @@ export class AppModule implements OnApplicationBootstrap, OnApplicationShutdown 
     if (process.env.START_WORKERS !== "false") {
       this.outboxWorker.start();
       this.pendingWorker.start();
+      this.sqsConsumerWorker.start();
     }
   }
 
@@ -110,5 +120,6 @@ export class AppModule implements OnApplicationBootstrap, OnApplicationShutdown 
     // Finalização graciosa garantindo commit de operações em trânsito
     await this.outboxWorker.stop();
     await this.pendingWorker.stop();
+    await this.sqsConsumerWorker.stop();
   }
 }
