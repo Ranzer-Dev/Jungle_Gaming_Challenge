@@ -64,3 +64,4 @@ describe("Canonical Hash Service", () => {
     expect(hashBase).not.toBe(hashAlteredPlayer);
   });
 });
+

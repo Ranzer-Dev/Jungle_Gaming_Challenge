@@ -21,3 +21,4 @@ export class MoneyType extends Type<Money | undefined, string | undefined> {
     return "numeric(18, 2)";
   }
 }
+

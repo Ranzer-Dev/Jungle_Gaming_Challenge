@@ -93,3 +93,4 @@ export class WagerTransactionPendingReference extends IntegrationEvent<WagerTran
     super(props);
   }
 }
+

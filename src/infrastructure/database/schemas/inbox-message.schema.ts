@@ -12,3 +12,4 @@ export const InboxMessageSchema = new EntitySchema<InboxMessage>({
     processedAt: { type: "Date", fieldName: "processed_at", nullable: true },
   },
 });
+

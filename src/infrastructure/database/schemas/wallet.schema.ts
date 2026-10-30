@@ -21,3 +21,4 @@ export const WalletSchema = new EntitySchema<Wallet>({
     },
   ],
 });
+

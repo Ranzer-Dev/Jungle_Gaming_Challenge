@@ -135,3 +135,4 @@ describe("WagerTransaction Entity", () => {
     expect(rollbackBet.ledgerDirectionFor(betTx)).toBe(LedgerDirection.Credit);
   });
 });
+

@@ -49,3 +49,4 @@ export abstract class IntegrationEvent<T> {
     };
   }
 }
+

@@ -116,3 +116,4 @@ export class Migration20261030110000_InitCoreSchema extends Migration {
     this.addSql("DROP TABLE IF EXISTS wallets CASCADE;");
   }
 }
+

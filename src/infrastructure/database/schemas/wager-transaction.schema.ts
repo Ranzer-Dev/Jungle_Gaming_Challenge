@@ -58,3 +58,4 @@ export const WagerTransactionSchema = new EntitySchema<WagerTransaction>({
     },
   ],
 });
+

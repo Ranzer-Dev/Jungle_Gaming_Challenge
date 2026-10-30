@@ -15,3 +15,4 @@ export const OutboxMessageSchema = new EntitySchema<OutboxMessage>({
     publishedAt: { type: "Date", fieldName: "published_at", nullable: true },
   },
 });
+

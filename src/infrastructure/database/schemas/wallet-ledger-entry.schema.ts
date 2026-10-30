@@ -25,3 +25,4 @@ export const WalletLedgerEntrySchema = new EntitySchema<WalletLedgerEntry>({
     },
   ],
 });
+
