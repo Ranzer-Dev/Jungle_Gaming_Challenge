@@ -46,3 +46,4 @@ export interface WalletReconciliationResult {
   consistent: boolean;
   checkedEntries: number;
 }
+

@@ -92,11 +92,19 @@ export class Money {
     return this.value.equals(other.value);
   }
 
-  public toJSON(): MoneyProps {
+  public get amount(): string {
+    return this.value.toFixed(2);
+  }
+
+  public toProps(): MoneyProps {
     return {
-      amount: this.toString(),
+      amount: this.amount,
       currency: this.currency,
     };
+  }
+
+  public toJSON(): MoneyProps {
+    return this.toProps();
   }
 
   public toString(): string {

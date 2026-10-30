@@ -576,3 +576,4 @@ export class ProcessWagerTransactionUseCase {
     );
   }
 }
+

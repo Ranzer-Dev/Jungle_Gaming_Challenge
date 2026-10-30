@@ -46,3 +46,4 @@ export interface IUnitOfWorkContext {
   inbox: IInboxRepository;
   outbox: IOutboxRepository;
 }
+

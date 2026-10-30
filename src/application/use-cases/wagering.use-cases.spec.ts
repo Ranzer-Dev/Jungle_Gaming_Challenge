@@ -288,3 +288,4 @@ describe("Application Use Cases", () => {
     expect(reconciliation.checkedEntries).toBe(3); // 1 OPENING + 1 BET + 1 WIN
   });
 });
+

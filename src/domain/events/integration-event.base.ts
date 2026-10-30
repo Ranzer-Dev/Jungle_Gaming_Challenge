@@ -1,7 +1,7 @@
 export interface IntegrationEventProps<T> {
-  eventId: string;
+  eventId?: string;
   aggregateId: string;
-  correlationId: string;
+  correlationId?: string;
   causationId?: string;
   occurredAt?: Date;
   data: T;
@@ -19,9 +19,9 @@ export abstract class IntegrationEvent<T> {
   public readonly data: Readonly<T>;
 
   protected constructor(props: IntegrationEventProps<T>) {
-    this.eventId = props.eventId;
+    this.eventId = props.eventId ?? crypto.randomUUID();
     this.aggregateId = props.aggregateId;
-    this.correlationId = props.correlationId;
+    this.correlationId = props.correlationId ?? crypto.randomUUID();
     this.causationId = props.causationId;
     this.occurredAt = props.occurredAt ?? new Date();
     this.data = Object.freeze({ ...props.data });
