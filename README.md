@@ -1,4 +1,4 @@
-# 🦧 Jungle Gaming — Distributed Wagering Processor
+# Jungle Gaming — Distributed Wagering Processor
 
 <p align="center">
   <b>Plataforma financeira distribuída de alta performance para processamento de apostas em tempo real com Domain-Driven Design (DDD) puro, consistência ACID estrita, ledger imutável (append-only), Transactional Outbox/Inbox e resiliência a concorrência extrema.</b>
@@ -17,41 +17,41 @@
 
 ---
 
-## ⚡ Guia Rápido de Setup & Como Rodar o Projeto
+## 1. Guia Rápido de Setup e Execução
 
-Esta seção detalha o procedimento determinístico para inicializar a infraestrutura, executar migrações e rodar os testes e a aplicação em qualquer ambiente, atendendo estritamente aos requisitos da Seção 12 e 14 do desafio.
+Esta seção detalha o procedimento determinístico para inicializar a infraestrutura, executar migrações e rodar os testes e a aplicação em qualquer ambiente, atendendo estritamente aos requisitos do desafio.
 
-### 1. Pré-requisitos
+### 1.1 Pré-requisitos
 - [Bun](https://bun.sh/) (v1.2+) ou [Node.js](https://nodejs.org/) (v20+)
 - [Docker](https://www.docker.com/) e Docker Compose
 
 ---
 
-### 2. Passo a Passo de Execução
+### 1.2 Procedimento de Execução
 
-#### Passo 2.1: Inicializar os Contêineres de Infraestrutura Real
-O `docker-compose.yml` sobe um **PostgreSQL 16** real e um contêiner **LocalStack 3.8** com as filas AWS SQS FIFO e dead-letter queue:
+#### Passo 1: Inicializar os Contêineres de Infraestrutura Real
+O arquivo `docker-compose.yml` provisiona um **PostgreSQL 16** e um contêiner **LocalStack 3.8** com filas AWS SQS FIFO e dead-letter queue:
 ```bash
 docker compose up -d
 ```
 > O healthcheck nativo do PostgreSQL garantirá prontidão na porta `5432`, e o LocalStack inicializará na porta `4566`.
 
-#### Passo 2.2: Configurar Variáveis de Ambiente
+#### Passo 2: Configurar Variáveis de Ambiente
 O repositório já inclui um arquivo `.env.example` pronto para uso local:
 ```bash
 cp .env.example .env
 ```
 
-#### Passo 2.3: Instalar Dependências & Aplicar Migrations
+#### Passo 3: Instalar Dependências e Aplicar Migrações
 ```bash
-# Instala dependências com resolução ultra-rápida via Bun
+# Instala dependências com resolução estrita via Bun
 bun install
 
-# Executa as migrations do MikroORM (cria tabelas, constraints e triggers)
+# Executa as migrações do MikroORM (cria tabelas, constraints e triggers)
 bun run mikro-orm migration:up
 ```
 
-#### Passo 2.4: Inicializar a Aplicação
+#### Passo 4: Inicializar a Aplicação
 ```bash
 # Modo de desenvolvimento com Hot-Reload
 bun run start:dev
@@ -62,18 +62,15 @@ bun run start:prod
 
 ---
 
-### 3. Endpoints & Probes do Serviço
+### 1.3 Endpoints e Probes do Serviço
 
-- **Swagger UI (Documentação Interativa da API):**  
-  👉 [`http://localhost:3000/docs`](http://localhost:3000/docs)
-- **Liveness Probe:**  
-  `GET http://localhost:3000/health/live` (Retorna `{"status": "ok"}`)
-- **Readiness Probe:**  
-  `GET http://localhost:3000/health/ready` (Valida conexão com PostgreSQL e LocalStack)
+- **Swagger UI (Documentação Interativa da API):** [http://localhost:3000/docs](http://localhost:3000/docs)
+- **Liveness Probe:** `GET http://localhost:3000/health/live` (Retorna `{"status": "ok"}`)
+- **Readiness Probe:** `GET http://localhost:3000/health/ready` (Valida conexão com PostgreSQL e LocalStack)
 
 ---
 
-### 4. Execução da Suíte Completa de Testes (Zero Mocks)
+### 1.4 Execução da Suíte Completa de Testes (Zero Mocks)
 
 > [!IMPORTANT]
 > Todos os testes de integração e concorrência rodam **obrigatoriamente contra os contêineres reais de PostgreSQL e LocalStack**, em conformidade com as Leis de Governança do projeto.
@@ -97,10 +94,10 @@ bun run test:load
 
 ---
 
-## 🎯 Sobre o Projeto & Contexto de Negócio
+## 2. Sobre o Projeto e Contexto de Negócio
 
 No ecossistema de alta disponibilidade de **iGaming**, provedores globais de jogos (ex.: *Evolution Gaming*, *Pragmatic Play*, *Playtech*) enviam um fluxo ininterrupto de transações financeiras simultâneas associadas a rodadas de apostas:
-```
+```text
 BET (Débito) ───► WIN (Crédito) | LOSS (Neutro) | REFUND (Estorno) | ROLLBACK (Inversão)
 ```
 
@@ -117,7 +114,7 @@ O **Distributed Wagering Processor** resolve esses desafios com excelência téc
 
 ---
 
-## 🏛️ Arquitetura de Software & Design DDD Puro
+## 3. Arquitetura de Software e Design DDD Puro
 
 O sistema segue os princípios da **Arquitetura Hexagonal (Ports & Adapters)** e do **Domain-Driven Design (DDD)** puro:
 
@@ -198,7 +195,7 @@ src/
 
 ---
 
-## 🛡️ As 10 Leis Invioláveis do Projeto
+## 4. As 10 Leis Invioláveis do Projeto
 
 | Lei | Regra Obrigatória | Implementação no Código |
 |---|---|---|
@@ -215,7 +212,7 @@ src/
 
 ---
 
-## 🌐 Catálogo Completo de Endpoints HTTP
+## 5. Catálogo Completo de Endpoints HTTP
 
 | Método | Endpoint | Descrição | Status HTTP |
 |---|---|---|---|
@@ -244,7 +241,7 @@ src/
 
 ---
 
-## 📊 Resultados do Benchmark de Alta Performance (`bun run test:load`)
+## 6. Resultados do Benchmark de Alta Performance (`bun run test:load`)
 
 O teste de estresse executado contra os contêineres reais sob carga sustentada apurou os seguintes resultados:
 
@@ -261,12 +258,12 @@ O teste de estresse executado contra os contêineres reais sob carga sustentada 
 
 ---
 
-## 📚 Documentação Técnica Complementar
+## 7. Documentação Técnica Complementar
 
-- 📘 **[ARCHITECTURE.md](./ARCHITECTURE.md):** Documento executivo detalhado com todas as justificativas técnicas, trade-offs de engenharia, concorrência e respostas completas para a banca de avaliação (Staff/Principal Engineer).
-- 📜 **[REGRAS_DESAFIO.md](./docs/REGRAS_DESAFIO.md):** Briefing e especificações originais da Jungle Gaming preservados na íntegra.
-- 📐 **[Contrato do Consumidor SQS FIFO](./docs/api/sqs-consumer-contract.md):** Especificação formal do payload e ciclo de consumo assíncrono.
-- 📡 **[Catálogo de Eventos de Integração](./docs/api/integration-events.md):** Especificação dos eventos `WalletBalanceChanged`, `WagerTransactionProcessed` e `WagerTransactionRejected`.
-- 📑 **[Matriz de Códigos de Status HTTP](./docs/api/http-status-mapping-matrix.md):** Mapeamento exaustivo de decisões HTTP e RFC 7807.
-- 🏛️ **[Decisões de Arquitetura (ADRs)](./docs/adr/):** Registros formais de decisões arquiteturais adotadas no projeto.
-- 📋 **[Checklist de Conformidade](./docs/CHECKLIST_CONFORMANCE.md):** Validação item a item dos critérios de avaliação do desafio.
+- **[ARCHITECTURE.md](./ARCHITECTURE.md):** Documento executivo detalhado com todas as justificativas técnicas, trade-offs de engenharia, concorrência e respostas completas para a banca de avaliação (Staff/Principal Engineer).
+- **[REGRAS_DESAFIO.md](./docs/REGRAS_DESAFIO.md):** Briefing e especificações originais da Jungle Gaming preservados na íntegra.
+- **[Contrato do Consumidor SQS FIFO](./docs/api/sqs-consumer-contract.md):** Especificação formal do payload e ciclo de consumo assíncrono.
+- **[Catálogo de Eventos de Integração](./docs/api/integration-events.md):** Especificação dos eventos `WalletBalanceChanged`, `WagerTransactionProcessed` e `WagerTransactionRejected`.
+- **[Matriz de Códigos de Status HTTP](./docs/api/http-status-mapping-matrix.md):** Mapeamento exaustivo de decisões HTTP e RFC 7807.
+- **[Decisões de Arquitetura (ADRs)](./docs/adr/):** Registros formais de decisões arquiteturais adotadas no projeto.
+- **[Checklist de Conformidade](./docs/CHECKLIST_CONFORMANCE.md):** Validação item a item dos critérios de avaliação do desafio.
