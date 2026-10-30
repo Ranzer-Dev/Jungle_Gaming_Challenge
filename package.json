@@ -6,12 +6,12 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "build": "nest build",
+    "build": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start": "bun src/main.ts",
+    "start:dev": "bun --watch src/main.ts",
+    "start:nest": "nest start --watch",
+    "start:prod": "bun src/main.ts",
     "test": "bun test",
     "test:unit": "bun test src/**/*.spec.ts",
     "test:integration": "bun test test/integration/**/*.spec.ts",
@@ -38,6 +38,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@nestjs/cli": "^12.0.11",
     "@types/bun": "^1.4.4",
     "@types/express": "^5.0.6",
     "@types/node": "^22.13.5",

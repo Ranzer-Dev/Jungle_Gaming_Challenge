@@ -24,7 +24,7 @@ export class SqsQueuePublisher implements IMessageQueuePublisher {
     this.queueUrl =
       config?.queueUrl ||
       process.env.SQS_OUTBOX_QUEUE_URL ||
-      "http://localhost:4566/000000000000/wager-events.fifo";
+      "http://localhost:4566/000000000000/integration-events.fifo";
 
     const endpoint =
       config?.endpoint ||

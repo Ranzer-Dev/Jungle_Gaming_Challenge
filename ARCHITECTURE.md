@@ -1,4 +1,4 @@
-﻿# ARCHITECTURE.md — Documento de Arquitetura & Decisões de Engenharia
+# ARCHITECTURE.md — Documento de Arquitetura & Decisões de Engenharia
 
 <p align="center">
   <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
