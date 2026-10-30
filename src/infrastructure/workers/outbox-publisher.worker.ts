@@ -48,7 +48,7 @@ export class OutboxPublisherWorker {
 
   public async processBatch(): Promise<number> {
     return this.unitOfWork.execute(async ({ outbox }) => {
-      const messages = await outbox.fetchUnpublished(this.batchSize);
+      const messages = await outbox.findPending(this.batchSize);
       if (messages.length === 0) {
         return 0;
       }
@@ -96,3 +96,4 @@ export class OutboxPublisherWorker {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
+

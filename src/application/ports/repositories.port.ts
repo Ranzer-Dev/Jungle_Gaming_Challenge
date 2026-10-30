@@ -35,8 +35,8 @@ export interface IOutboxRepository {
   persist(message: OutboxMessage): void;
 }
 
-export interface IUnitOfWork {
-  execute<T>(operation: (uowContext: IUnitOfWorkContext) => Promise<T>): Promise<T>;
+export abstract class IUnitOfWork {
+  abstract execute<T>(operation: (uowContext: IUnitOfWorkContext) => Promise<T>): Promise<T>;
 }
 
 export interface IUnitOfWorkContext {

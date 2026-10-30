@@ -7,3 +7,4 @@ export interface IMessageQueuePublisher {
     failedIds: string[];
   }>;
 }
+

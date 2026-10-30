@@ -65,3 +65,15 @@ export class RollbackWouldCauseNegativeBalanceError extends DomainError {
   }
 }
 
+export class ProviderIdentityMismatchError extends DomainError {
+  public readonly failureCode = "PROVIDER_IDENTITY_MISMATCH";
+  public readonly statusCode = 403;
+
+  constructor(claimedProvider: string, authenticatedProvider: string) {
+    super(
+      `Provider identity mismatch: request claims to be '${claimedProvider}', but credentials belong to '${authenticatedProvider}'`,
+    );
+  }
+}
+
+

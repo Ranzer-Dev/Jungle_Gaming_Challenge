@@ -4,6 +4,7 @@ import {
   IMessageQueuePublisher,
   IOutboxRepository,
   IUnitOfWork,
+  IUnitOfWorkContext,
   IWagerTransactionRepository,
   IWalletLedgerRepository,
   IWalletRepository,
@@ -22,28 +23,27 @@ import { Money } from "../../domain/value-objects/money.value-object";
 import { OutboxPublisherWorker } from "./outbox-publisher.worker";
 import { PendingReferenceWorker } from "./pending-reference.worker";
 
-class InMemoryUoW implements IUnitOfWork {
+class InMemoryUoW extends IUnitOfWork {
   public walletsList: Wallet[] = [];
   public transactionsList: WagerTransaction[] = [];
   public ledgersList: WalletLedgerEntry[] = [];
   public outboxList: OutboxMessage[] = [];
   public inboxList: InboxMessage[] = [];
 
+  constructor() {
+    super();
+  }
+
   public async execute<T>(
-    work: (repos: {
-      wallets: IWalletRepository;
-      transactions: IWagerTransactionRepository;
-      ledgers: IWalletLedgerRepository;
-      inbox: IInboxRepository;
-      outbox: IOutboxRepository;
-    }) => Promise<T>,
+    operation: (uowContext: IUnitOfWorkContext) => Promise<T>,
   ): Promise<T> {
     const wallets: IWalletRepository = {
-      findById: async (id, _opts) => this.walletsList.find((w) => w.id === id) ?? null,
+      findById: async (id) => this.walletsList.find((w) => w.id === id) ?? null,
+      findByIdForUpdate: async (id) => this.walletsList.find((w) => w.id === id) ?? null,
       findByPlayerAndCurrency: async (playerId, currency) =>
         this.walletsList.find((w) => w.playerId === playerId && w.currency === currency) ??
         null,
-      save: async (w) => {
+      persist: (w) => {
         const idx = this.walletsList.findIndex((item) => item.id === w.id);
         if (idx >= 0) this.walletsList[idx] = w;
         else this.walletsList.push(w);
@@ -63,69 +63,58 @@ class InMemoryUoW implements IUnitOfWork {
         this.transactionsList
           .filter((t) => t.status === WagerTransactionStatus.PendingReference)
           .slice(0, limit),
-      save: async (t) => {
+      persist: (t) => {
         const idx = this.transactionsList.findIndex((item) => item.id === t.id);
         if (idx >= 0) this.transactionsList[idx] = t;
         else this.transactionsList.push(t);
       },
     };
 
-    const ledgers: IWalletLedgerRepository = {
-      save: async (entry) => {
+    const ledger: IWalletLedgerRepository = {
+      persist: (entry) => {
         this.ledgersList.push(entry);
       },
-      findByWalletId: async (walletId, _options) => {
+      findByWalletId: async (walletId, limit = 20, cursor) => {
         const entries = this.ledgersList.filter((e) => e.walletId === walletId);
-        return { entries, nextCursor: null };
+        return { entries, nextCursor: undefined, hasMore: false };
       },
-      sumCredits: async (walletId) => {
+      sumCreditsAndDebits: async (walletId) => {
         const wallet = this.walletsList.find((w) => w.id === walletId);
         const currency = wallet?.currency ?? "BRL";
-        let total = Money.zero(currency);
-        for (const e of this.ledgersList.filter(
-          (l) => l.walletId === walletId && l.direction === "CREDIT",
-        )) {
-          total = total.add(e.money);
+        let totalCredits = Money.zero(currency);
+        let totalDebits = Money.zero(currency);
+        for (const e of this.ledgersList.filter((l) => l.walletId === walletId)) {
+          if (e.direction === "CREDIT") totalCredits = totalCredits.add(e.money);
+          else totalDebits = totalDebits.add(e.money);
         }
-        return total;
-      },
-      sumDebits: async (walletId) => {
-        const wallet = this.walletsList.find((w) => w.id === walletId);
-        const currency = wallet?.currency ?? "BRL";
-        let total = Money.zero(currency);
-        for (const e of this.ledgersList.filter(
-          (l) => l.walletId === walletId && l.direction === "DEBIT",
-        )) {
-          total = total.add(e.money);
-        }
-        return total;
+        return {
+          totalCredits: totalCredits.amount,
+          totalDebits: totalDebits.amount,
+          count: this.ledgersList.filter((l) => l.walletId === walletId).length,
+        };
       },
     };
 
     const inbox: IInboxRepository = {
-      isConsumed: async (c, m) =>
-        this.inboxList.some((i) => i.consumerName === c && i.messageId === m),
-      save: async (msg) => {
+      find: async (c, m) =>
+        this.inboxList.find((i) => i.consumerName === c && i.messageId === m) ?? null,
+      persist: (msg) => {
         this.inboxList.push(msg);
       },
     };
 
     const outbox: IOutboxRepository = {
-      save: async (msg) => {
+      persist: (msg) => {
         const idx = this.outboxList.findIndex((item) => item.id === msg.id);
         if (idx >= 0) this.outboxList[idx] = msg;
         else this.outboxList.push(msg);
       },
-      fetchUnpublished: async (batchSize) => {
-        return this.outboxList.filter((m) => m.isPending()).slice(0, batchSize);
-      },
-      markPublished: async (id) => {
-        const msg = this.outboxList.find((m) => m.id === id);
-        if (msg) msg.markPublished();
+      findPending: async (limit) => {
+        return this.outboxList.filter((m) => m.isPending()).slice(0, limit);
       },
     };
 
-    return work({ wallets, transactions, ledgers, inbox, outbox });
+    return operation({ wallets, transactions, ledger, inbox, outbox });
   }
 }
 

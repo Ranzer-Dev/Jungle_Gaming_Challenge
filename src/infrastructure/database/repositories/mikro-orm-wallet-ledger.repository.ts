@@ -1,7 +1,6 @@
 import { EntityManager, QueryOrder } from "@mikro-orm/postgresql";
 import { IWalletLedgerRepository } from "../../../application/ports/repositories.port";
 import { WalletLedgerEntry } from "../../../domain/entities/wallet-ledger-entry.entity";
-import { Money } from "../../../domain/value-objects/money.value-object";
 
 interface LedgerCursorData {
   createdAt: string;
@@ -11,22 +10,23 @@ interface LedgerCursorData {
 export class MikroOrmWalletLedgerRepository implements IWalletLedgerRepository {
   constructor(private readonly em: EntityManager) {}
 
-  public async save(entry: WalletLedgerEntry): Promise<void> {
+  public persist(entry: WalletLedgerEntry): void {
     this.em.persist(entry);
   }
 
   public async findByWalletId(
     walletId: string,
-    options?: { limit?: number; cursor?: string },
-  ): Promise<{ entries: WalletLedgerEntry[]; nextCursor: string | null }> {
-    const limit = Math.min(Math.max(options?.limit ?? 20, 1), 100);
+    limit: number = 20,
+    cursor?: string,
+  ): Promise<{ entries: WalletLedgerEntry[]; nextCursor?: string; hasMore: boolean }> {
+    const effectiveLimit = Math.min(Math.max(limit, 1), 100);
     const qb = this.em.createQueryBuilder(WalletLedgerEntry, "entry");
 
     qb.where({ walletId });
 
-    if (options?.cursor) {
+    if (cursor) {
       try {
-        const decoded = Buffer.from(options.cursor, "base64").toString("utf-8");
+        const decoded = Buffer.from(cursor, "base64").toString("utf-8");
         const parsed = JSON.parse(decoded) as LedgerCursorData;
         const cursorDate = new Date(parsed.createdAt);
 
@@ -38,18 +38,18 @@ export class MikroOrmWalletLedgerRepository implements IWalletLedgerRepository {
           },
         );
       } catch {
-        // Ignora cursor malformado e faz query do início
+        // Ignora cursor inválido
       }
     }
 
     qb.orderBy({ createdAt: QueryOrder.DESC, id: QueryOrder.DESC });
-    qb.limit(limit + 1);
+    qb.limit(effectiveLimit + 1);
 
     const rows = await qb.getResultList();
-    const hasMore = rows.length > limit;
-    const entries = hasMore ? rows.slice(0, limit) : rows;
+    const hasMore = rows.length > effectiveLimit;
+    const entries = hasMore ? rows.slice(0, effectiveLimit) : rows;
 
-    let nextCursor: string | null = null;
+    let nextCursor: string | undefined = undefined;
     if (hasMore && entries.length > 0) {
       const lastEntry = entries[entries.length - 1];
       if (lastEntry) {
@@ -61,44 +61,38 @@ export class MikroOrmWalletLedgerRepository implements IWalletLedgerRepository {
       }
     }
 
-    return { entries, nextCursor };
+    return { entries, nextCursor, hasMore };
   }
 
-  public async sumCredits(walletId: string): Promise<Money> {
+  public async sumCreditsAndDebits(
+    walletId: string,
+  ): Promise<{ totalCredits: string; totalDebits: string; count: number }> {
     const conn = this.em.getConnection();
-    const rows = await conn.execute<Array<{ total: string; currency: string }>>(
-      `SELECT w.currency, COALESCE(SUM(l.amount), 0)::text as total
-       FROM wallets w
-       LEFT JOIN wallet_ledger_entries l ON l.wallet_id = w.id AND l.direction = 'CREDIT'
-       WHERE w.id = ?
-       GROUP BY w.currency`,
+    const rows = await conn.execute<
+      Array<{
+        total_credits: string;
+        total_debits: string;
+        entry_count: string;
+      }>
+    >(
+      `SELECT
+         COALESCE(SUM(CASE WHEN direction = 'CREDIT' THEN amount ELSE 0 END), 0)::text as total_credits,
+         COALESCE(SUM(CASE WHEN direction = 'DEBIT' THEN amount ELSE 0 END), 0)::text as total_debits,
+         COUNT(*)::text as entry_count
+       FROM wallet_ledger_entries
+       WHERE wallet_id = ?`,
       [walletId],
     );
 
     const first = rows[0];
     if (!first) {
-      return Money.zero("USD");
+      return { totalCredits: "0.00", totalDebits: "0.00", count: 0 };
     }
 
-    return Money.from({ amount: first.total, currency: first.currency });
-  }
-
-  public async sumDebits(walletId: string): Promise<Money> {
-    const conn = this.em.getConnection();
-    const rows = await conn.execute<Array<{ total: string; currency: string }>>(
-      `SELECT w.currency, COALESCE(SUM(l.amount), 0)::text as total
-       FROM wallets w
-       LEFT JOIN wallet_ledger_entries l ON l.wallet_id = w.id AND l.direction = 'DEBIT'
-       WHERE w.id = ?
-       GROUP BY w.currency`,
-      [walletId],
-    );
-
-    const first = rows[0];
-    if (!first) {
-      return Money.zero("USD");
-    }
-
-    return Money.from({ amount: first.total, currency: first.currency });
+    return {
+      totalCredits: first.total_credits,
+      totalDebits: first.total_debits,
+      count: parseInt(first.entry_count, 10),
+    };
   }
 }

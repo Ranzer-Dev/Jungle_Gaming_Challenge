@@ -5,12 +5,11 @@ import { InboxMessage } from "../../../domain/entities/inbox-message.entity";
 export class MikroOrmInboxRepository implements IInboxRepository {
   constructor(private readonly em: EntityManager) {}
 
-  public async isConsumed(consumerName: string, messageId: string): Promise<boolean> {
-    const count = await this.em.count(InboxMessage, { consumerName, messageId });
-    return count > 0;
+  public async find(consumerName: string, messageId: string): Promise<InboxMessage | null> {
+    return this.em.findOne(InboxMessage, { consumerName, messageId });
   }
 
-  public async save(message: InboxMessage): Promise<void> {
+  public persist(message: InboxMessage): void {
     this.em.persist(message);
   }
 }

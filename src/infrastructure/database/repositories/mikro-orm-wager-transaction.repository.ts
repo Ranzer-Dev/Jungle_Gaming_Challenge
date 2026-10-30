@@ -29,12 +29,12 @@ export class MikroOrmWagerTransactionRepository implements IWagerTransactionRepo
   public async findPendingReferences(limit: number = 20): Promise<WagerTransaction[]> {
     return this.em.find(
       WagerTransaction,
-      { status: WagerTransactionStatus.PENDING_REFERENCE },
+      { status: WagerTransactionStatus.PendingReference },
       { limit, orderBy: { createdAt: QueryOrder.ASC } },
     );
   }
 
-  public async save(transaction: WagerTransaction): Promise<void> {
+  public persist(transaction: WagerTransaction): void {
     this.em.persist(transaction);
   }
 }

@@ -124,3 +124,4 @@ export class SqsQueuePublisher implements IMessageQueuePublisher {
     return { successfulIds, failedIds };
   }
 }
+

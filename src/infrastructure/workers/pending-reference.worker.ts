@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { IUnitOfWork } from "../../application/ports/repositories.port";
+import { IUnitOfWork, IUnitOfWorkContext } from "../../application/ports/repositories.port";
 import { OutboxMessage } from "../../domain/entities/outbox-message.entity";
 import {
   LedgerDirection,
@@ -63,8 +63,8 @@ export class PendingReferenceWorker {
   }
 
   public async evaluatePendingReferences(): Promise<number> {
-    return this.unitOfWork.execute(async ({ transactions, wallets, ledgers, outbox }) => {
-      const pendingList = await transactions.findPendingReferences(this.batchSize);
+    return this.unitOfWork.execute(async (ctx: IUnitOfWorkContext) => {
+      const pendingList = await ctx.transactions.findPendingReferences(this.batchSize);
       if (pendingList.length === 0) {
         return 0;
       }
@@ -76,12 +76,7 @@ export class PendingReferenceWorker {
       const now = new Date();
 
       for (const tx of pendingList) {
-        await this.processSinglePendingReference(tx, now, {
-          transactions,
-          wallets,
-          ledgers,
-          outbox,
-        });
+        await this.processSinglePendingReference(tx, now, ctx);
       }
 
       return pendingList.length;
@@ -91,9 +86,9 @@ export class PendingReferenceWorker {
   private async processSinglePendingReference(
     tx: WagerTransaction,
     now: Date,
-    repos: Parameters<Parameters<IUnitOfWork["execute"]>[0]>[0],
+    ctx: IUnitOfWorkContext,
   ): Promise<void> {
-    const { transactions, wallets, ledgers, outbox } = repos;
+    const { transactions, wallets, ledger, outbox } = ctx;
 
     // 1. Localiza a transação pai referenciada
     let parentTx: WagerTransaction | null = null;
@@ -115,7 +110,7 @@ export class PendingReferenceWorker {
           `Transaction ${tx.id} exceeded max age (${ageMs}ms > ${this.maxAgeMs}ms). Rejecting as REFERENCE_NOT_FOUND.`,
         );
         tx.reject("REFERENCE_NOT_FOUND");
-        await transactions.save(tx);
+        transactions.persist(tx);
 
         const rejectedEvent = new WagerTransactionRejected({
           aggregateId: tx.walletId,
@@ -133,7 +128,7 @@ export class PendingReferenceWorker {
             reason: "Referenced parent transaction was not found within timeout window",
           },
         });
-        await outbox.save(OutboxMessage.enqueue(rejectedEvent));
+        outbox.persist(OutboxMessage.enqueue(rejectedEvent));
       }
       return;
     }
@@ -141,7 +136,7 @@ export class PendingReferenceWorker {
     // 3. Pai encontrado e PROCESSED! Validar invariantes
     if (parentTx.roundId !== tx.roundId) {
       tx.reject("REFERENCE_ROUND_MISMATCH");
-      await transactions.save(tx);
+      transactions.persist(tx);
       const rejectedEvent = new WagerTransactionRejected({
         aggregateId: tx.walletId,
         data: {
@@ -158,15 +153,15 @@ export class PendingReferenceWorker {
           reason: "Reference transaction belongs to different round",
         },
       });
-      await outbox.save(OutboxMessage.enqueue(rejectedEvent));
+      outbox.persist(OutboxMessage.enqueue(rejectedEvent));
       return;
     }
 
     // Lock na carteira para efetivar a transação com segurança
-    const wallet = await wallets.findById(tx.walletId, { lock: true });
+    const wallet = await wallets.findByIdForUpdate(tx.walletId);
     if (!wallet) {
       tx.reject("WALLET_NOT_FOUND");
-      await transactions.save(tx);
+      transactions.persist(tx);
       return;
     }
 
@@ -175,11 +170,11 @@ export class PendingReferenceWorker {
       const balanceBefore = wallet.balance;
       const ledgerEntryId = crypto.randomUUID();
       const { ledgerEntry } = wallet.credit(tx.money, tx.id, ledgerEntryId, now);
-      await wallets.save(wallet);
-      await ledgers.save(ledgerEntry);
+      wallets.persist(wallet);
+      ledger.persist(ledgerEntry);
 
       tx.markProcessed(parentTx.id, wallet.balance);
-      await transactions.save(tx);
+      transactions.persist(tx);
 
       const balanceChangedEvent = new WalletBalanceChanged({
         aggregateId: wallet.id,
@@ -212,8 +207,8 @@ export class PendingReferenceWorker {
         },
       });
 
-      await outbox.save(OutboxMessage.enqueue(balanceChangedEvent));
-      await outbox.save(OutboxMessage.enqueue(processedEvent));
+      outbox.persist(OutboxMessage.enqueue(balanceChangedEvent));
+      outbox.persist(OutboxMessage.enqueue(processedEvent));
       return;
     }
 
@@ -229,7 +224,7 @@ export class PendingReferenceWorker {
       } else {
         if (!wallet.canDebit(tx.money)) {
           tx.reject("ROLLBACK_WOULD_CAUSE_NEGATIVE_BALANCE");
-          await transactions.save(tx);
+          transactions.persist(tx);
           const rejectedEvent = new WagerTransactionRejected({
             aggregateId: tx.walletId,
             data: {
@@ -246,18 +241,18 @@ export class PendingReferenceWorker {
               reason: "Rollback debit would result in negative balance",
             },
           });
-          await outbox.save(OutboxMessage.enqueue(rejectedEvent));
+          outbox.persist(OutboxMessage.enqueue(rejectedEvent));
           return;
         }
         const result = wallet.debit(tx.money, tx.id, ledgerEntryId, now);
         ledgerEntry = result.ledgerEntry;
       }
 
-      await wallets.save(wallet);
-      await ledgers.save(ledgerEntry);
+      wallets.persist(wallet);
+      ledger.persist(ledgerEntry);
 
       tx.markProcessed(parentTx.id, wallet.balance);
-      await transactions.save(tx);
+      transactions.persist(tx);
 
       const balanceChangedEvent = new WalletBalanceChanged({
         aggregateId: wallet.id,
@@ -290,8 +285,8 @@ export class PendingReferenceWorker {
         },
       });
 
-      await outbox.save(OutboxMessage.enqueue(balanceChangedEvent));
-      await outbox.save(OutboxMessage.enqueue(processedEvent));
+      outbox.persist(OutboxMessage.enqueue(balanceChangedEvent));
+      outbox.persist(OutboxMessage.enqueue(processedEvent));
     }
   }
 

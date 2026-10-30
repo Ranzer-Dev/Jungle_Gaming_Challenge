@@ -5,19 +5,19 @@ import { Wallet } from "../../../domain/entities/wallet.aggregate";
 export class MikroOrmWalletRepository implements IWalletRepository {
   constructor(private readonly em: EntityManager) {}
 
-  public async findById(id: string, options?: { lock?: boolean }): Promise<Wallet | null> {
-    return this.em.findOne(
-      Wallet,
-      { id },
-      options?.lock ? { lockMode: LockMode.PESSIMISTIC_WRITE } : undefined,
-    );
+  public async findById(id: string): Promise<Wallet | null> {
+    return this.em.findOne(Wallet, { id });
+  }
+
+  public async findByIdForUpdate(id: string): Promise<Wallet | null> {
+    return this.em.findOne(Wallet, { id }, { lockMode: LockMode.PESSIMISTIC_WRITE });
   }
 
   public async findByPlayerAndCurrency(playerId: string, currency: string): Promise<Wallet | null> {
     return this.em.findOne(Wallet, { playerId, currency });
   }
 
-  public async save(wallet: Wallet): Promise<void> {
+  public persist(wallet: Wallet): void {
     this.em.persist(wallet);
   }
 }
