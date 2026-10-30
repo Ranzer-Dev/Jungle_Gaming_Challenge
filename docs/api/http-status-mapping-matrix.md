@@ -1,5 +1,18 @@
 # Matriz de Mapeamento de Status HTTP & Respostas da API
 
+<p align="center">
+  <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
+  <a href="../../README.md">README Principal</a> &nbsp;|&nbsp;
+  <a href="../../ARCHITECTURE.md">Arquitetura (Staff)</a> &nbsp;|&nbsp;
+  <a href="../REGRAS_DESAFIO.md">Regras do Desafio</a> &nbsp;|&nbsp;
+  <a href="./sqs-consumer-contract.md">Contrato SQS</a> &nbsp;|&nbsp;
+  <a href="./integration-events.md">Eventos Outbox</a> &nbsp;|&nbsp;
+  <b>Matriz HTTP</b> &nbsp;|&nbsp;
+  <a href="../CHECKLIST_CONFORMANCE.md">Checklist de Auditoria</a>
+</p>
+
+---
+
 Este documento estabelece o mapeamento determinístico entre eventos do domínio e códigos de status HTTP no **Distributed Wagering Processor**, atendendo rigorosamente à exigência da Seção 9 do `README.md` (Linhas 508-509):
 
 > *"A API precisa distinguir com clareza — e de forma consistente entre todos os endpoints — payload inválido, conflito de idempotência, rejeição por regra de negócio, aceite com processamento pendente e falha transitória de infraestrutura. Colapsar essas situações em um mesmo código obriga o provedor a interpretar mensagem de erro para decidir se pode reenviar."*

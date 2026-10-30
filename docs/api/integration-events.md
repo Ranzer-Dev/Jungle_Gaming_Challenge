@@ -1,5 +1,18 @@
 # Contratos de Eventos de Integração (Integration Events)
 
+<p align="center">
+  <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
+  <a href="../../README.md">README Principal</a> &nbsp;|&nbsp;
+  <a href="../../ARCHITECTURE.md">Arquitetura (Staff)</a> &nbsp;|&nbsp;
+  <a href="../REGRAS_DESAFIO.md">Regras do Desafio</a> &nbsp;|&nbsp;
+  <a href="./sqs-consumer-contract.md">Contrato SQS</a> &nbsp;|&nbsp;
+  <b>Eventos Outbox</b> &nbsp;|&nbsp;
+  <a href="./http-status-mapping-matrix.md">Matriz HTTP</a> &nbsp;|&nbsp;
+  <a href="../CHECKLIST_CONFORMANCE.md">Checklist de Auditoria</a>
+</p>
+
+---
+
 Este documento estabelece a especificação formal dos **Eventos de Integração** publicados no broker **AWS SQS** através do padrão **Transactional Outbox**.
 
 Na arquitetura da **Jungle Gaming**, estes eventos alimentam sistemas a jusante (*downstream*), incluindo CRM em tempo real, inteligência de comportamento do jogador (*player intelligence*), gamificação, afiliados e auditoria contábil.

@@ -15,6 +15,17 @@
   <img src="https://img.shields.io/badge/Tests-44_Passed_%7C_Zero_Mocks-success?style=for-the-badge" alt="Tests Badge"/>
 </p>
 
+<p align="center">
+  <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
+  <b>README Principal</b> &nbsp;|&nbsp;
+  <a href="./ARCHITECTURE.md">Arquitetura (Staff)</a> &nbsp;|&nbsp;
+  <a href="./docs/REGRAS_DESAFIO.md">Regras do Desafio</a> &nbsp;|&nbsp;
+  <a href="./docs/api/sqs-consumer-contract.md">Contrato SQS</a> &nbsp;|&nbsp;
+  <a href="./docs/api/integration-events.md">Eventos Outbox</a> &nbsp;|&nbsp;
+  <a href="./docs/api/http-status-mapping-matrix.md">Matriz HTTP</a> &nbsp;|&nbsp;
+  <a href="./docs/CHECKLIST_CONFORMANCE.md">Checklist de Auditoria</a>
+</p>
+
 ---
 
 ## 1. Guia Rápido de Setup e Execução

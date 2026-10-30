@@ -1,5 +1,18 @@
 # Contrato do Consumidor SQS (wager-transactions.fifo)
 
+<p align="center">
+  <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
+  <a href="../../README.md">README Principal</a> &nbsp;|&nbsp;
+  <a href="../../ARCHITECTURE.md">Arquitetura (Staff)</a> &nbsp;|&nbsp;
+  <a href="../REGRAS_DESAFIO.md">Regras do Desafio</a> &nbsp;|&nbsp;
+  <b>Contrato SQS</b> &nbsp;|&nbsp;
+  <a href="./integration-events.md">Eventos Outbox</a> &nbsp;|&nbsp;
+  <a href="./http-status-mapping-matrix.md">Matriz HTTP</a> &nbsp;|&nbsp;
+  <a href="../CHECKLIST_CONFORMANCE.md">Checklist de Auditoria</a>
+</p>
+
+---
+
 Este documento define a especificação formal do consumidor assíncrono de mensagens de apostas via **AWS SQS FIFO**, cobrindo o contrato de payload, headers de transporte, controle de idempotência (Transactional Inbox), ciclo de ack e tratamento de falhas.
 
 ---

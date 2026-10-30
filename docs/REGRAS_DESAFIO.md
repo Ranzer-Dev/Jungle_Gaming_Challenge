@@ -1,6 +1,19 @@
-﻿# Technical Challenge — Distributed Wagering Processor
+# Technical Challenge — Distributed Wagering Processor
 
-## Bem-vindo à Jungle Gaming 🦧
+<p align="center">
+  <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
+  <a href="../README.md">README Principal</a> &nbsp;|&nbsp;
+  <a href="../ARCHITECTURE.md">Arquitetura (Staff)</a> &nbsp;|&nbsp;
+  <b>Regras do Desafio</b> &nbsp;|&nbsp;
+  <a href="./api/sqs-consumer-contract.md">Contrato SQS</a> &nbsp;|&nbsp;
+  <a href="./api/integration-events.md">Eventos Outbox</a> &nbsp;|&nbsp;
+  <a href="./api/http-status-mapping-matrix.md">Matriz HTTP</a> &nbsp;|&nbsp;
+  <a href="./CHECKLIST_CONFORMANCE.md">Checklist de Auditoria</a>
+</p>
+
+---
+
+## Bem-vindo à Jungle Gaming
 
 A **Jungle Gaming** é uma software house especializada em iGaming — desenvolvemos plataformas de cassino online com tecnologia de ponta: NestJS, Bun, TanStack, DDD e arquitetura orientada a eventos. Somos apaixonados por engenharia de software e acreditamos que grandes produtos nascem de grandes times.
 

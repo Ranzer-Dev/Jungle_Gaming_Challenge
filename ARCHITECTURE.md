@@ -1,5 +1,18 @@
 # ARCHITECTURE.md — Documento de Arquitetura & Decisões de Engenharia
 
+<p align="center">
+  <b>Distributed Wagering Processor — Hub de Documentação Técnica</b><br>
+  <a href="./README.md">README Principal</a> &nbsp;|&nbsp;
+  <b>Arquitetura (Staff)</b> &nbsp;|&nbsp;
+  <a href="./docs/REGRAS_DESAFIO.md">Regras do Desafio</a> &nbsp;|&nbsp;
+  <a href="./docs/api/sqs-consumer-contract.md">Contrato SQS</a> &nbsp;|&nbsp;
+  <a href="./docs/api/integration-events.md">Eventos Outbox</a> &nbsp;|&nbsp;
+  <a href="./docs/api/http-status-mapping-matrix.md">Matriz HTTP</a> &nbsp;|&nbsp;
+  <a href="./docs/CHECKLIST_CONFORMANCE.md">Checklist de Auditoria</a>
+</p>
+
+---
+
 > **Distributed Wagering Processor — Jungle Gaming**  
 > **Nível:** Staff / Principal Software Engineer  
 > **Data:** Outubro de 2026  
