@@ -85,6 +85,14 @@ flowchart TD
 
 ---
 
+### 1.2 Decisão Arquitetural sobre Autenticação & Identidade (Seção 2 do Desafio)
+Em estrita conformidade com a Seção 2 do REGRAS_DESAFIO.md (que estabelece que autenticação não pontua na avaliação técnica e não deve sobrecarregar o timebox contra os pilares de concorrência e consistência financeira):
+- **Decisão Adotada:** Optou-se por não acoplar um container pesado de Identity Provider (como Keycloak, que consumiria ~1GB de RAM ociosa no Docker Compose) para um desafio focado em processamento financeiro concorrente.
+- **Ponto de Extensão no Código:** Foi implementada a abstração formal de porta IProviderIdentityPort (src/application/ports/provider-identity.port.ts) consumida pelo sentinela de borda ProviderAuthGuard (src/presentation/guards/provider-auth.guard.ts).
+- **Arquitetura de Produção Proposta:** Em ambiente de produção em larga escala, a autenticação de provedores B2B (Evolution, Pragmatic) seria realizada através de **mTLS (Mutual TLS)** na terminação do Load Balancer (AWS ALB / Cloudflare) combinada com validação de tokens JWT assimétricos (RS256) emitidos por um IdP federado (Keycloak/Zitadel via OIDC), integrando diretamente na porta IProviderIdentityPort sem qualquer impacto nas camadas de aplicação e domínio.
+
+---
+
 ## 2. Modelagem Monetária & Precisão Decimal
 
 ### 2.1 O Risco da Ponto Flutuante em Sistemas Financeiros
