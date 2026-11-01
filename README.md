@@ -60,6 +60,8 @@ bun install
 
 # Executa as migrações do MikroORM (cria tabelas, constraints e triggers)
 bun run mikro-orm migration:up
+# Ou via atalho:
+bun run db:migrate
 ```
 
 #### Passo 4: Inicializar a Aplicação
@@ -101,6 +103,9 @@ bun run test:concurrency
 
 # Executa o benchmark de carga (Throughput e métricas p50/p95/p99 com reconciliação contábil)
 bun run test:load
+
+# Checagem estrita de tipos em TypeScript (Zero erros no compilador)
+bun run typecheck
 ```
 
 ---
