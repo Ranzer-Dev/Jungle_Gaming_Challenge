@@ -137,7 +137,10 @@ export class WageringController {
     });
   }
 
-  @Get("providers/:providerId/transactions/:externalTransactionId")
+  @Get([
+    "providers/:providerId/wagering/transactions/:externalTransactionId",
+    "providers/:providerId/transactions/:externalTransactionId",
+  ])
   @ApiOperation({
     summary: "Consultar uma transação pela chave composta do provedor (providerId, externalTransactionId)",
   })
