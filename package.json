@@ -17,7 +17,7 @@
     "test:integration": "bun test test/integration/**/*.spec.ts",
     "test:concurrency": "bun test test/concurrency/**/*.spec.ts",
     "test:load": "bun run test/load/load-test.ts",
-    "mikro-orm": "mikro-orm"
+    "mikro-orm": "bun --bun ./node_modules/@mikro-orm/cli/cli.js"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.758.0",
